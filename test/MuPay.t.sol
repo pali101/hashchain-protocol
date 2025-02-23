@@ -195,4 +195,101 @@ contract MuPayTest is Test {
             payerWithdrawAfterBlocks
         );
     }
+
+    function testCreateChannelValidWithdrawTimes() public {
+        // Setup parameters
+        bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
+        uint256 amount = 1e18;
+        uint256 numberOfTokens = 100;
+
+        // Test Case 1: Equal withdraw after blocks
+        uint256 merchantWithdrawAfterBlocks1 = 5;
+        uint256 payerWithdrawAfterBlocks1 = 5;
+
+        // Test Case 1
+        vm.expectEmit(true, true, false, true);
+        emit MuPay.ChannelCreated(
+            payer,
+            merchant,
+            amount,
+            numberOfTokens,
+            merchantWithdrawAfterBlocks1
+        );
+
+        vm.prank(payer);
+        muPay.createChannel{value: amount}(
+            merchant,
+            trustAnchor,
+            amount,
+            numberOfTokens,
+            merchantWithdrawAfterBlocks1,
+            payerWithdrawAfterBlocks1
+        );
+
+        // Verify storage updates for Test Case 1
+        (
+            ,
+            ,
+            ,
+            uint256 storedMerchantWithdrawAfterBlocks1,
+            uint256 storedPayerWithdrawAfterBlocks1
+        ) = muPay.channelsMapping(payer, merchant);
+
+        assertEq(
+            storedMerchantWithdrawAfterBlocks1,
+            merchantWithdrawAfterBlocks1,
+            "Test Case 1: Incorrect merchant withdraw after blocks stored"
+        );
+        assertEq(
+            storedPayerWithdrawAfterBlocks1,
+            payerWithdrawAfterBlocks1,
+            "Test Case 1: Incorrect payer withdraw after blocks stored"
+        );
+
+        address merchant2 = address(0x3);
+
+        // Test Case 2: Merchant withdraw after blocks < payer withdraw after blocks
+        uint256 merchantWithdrawAfterBlocks2 = 1;
+        uint256 payerWithdrawAfterBlocks2 = 5;
+
+        // Test Case 2
+        vm.expectEmit(true, true, false, true);
+        emit MuPay.ChannelCreated(
+            payer,
+            merchant2,
+            amount,
+            numberOfTokens,
+            merchantWithdrawAfterBlocks2
+        );
+
+        vm.prank(payer);
+        muPay.createChannel{value: amount}(
+            merchant2,
+            trustAnchor,
+            amount,
+            numberOfTokens,
+            merchantWithdrawAfterBlocks2,
+            payerWithdrawAfterBlocks2
+        );
+
+        // Verify storage updates for Test Case 2
+        (
+            ,
+            ,
+            ,
+            uint256 storedMerchantWithdrawAfterBlocks2,
+            uint256 storedPayerWithdrawAfterBlocks2
+        ) = muPay.channelsMapping(payer, merchant2);
+
+        assertEq(
+            storedMerchantWithdrawAfterBlocks2,
+            merchantWithdrawAfterBlocks2,
+            "Test Case 2: Incorrect merchant withdraw after blocks stored"
+        );
+        assertEq(
+            storedPayerWithdrawAfterBlocks2,
+            payerWithdrawAfterBlocks2,
+            "Test Case 2: Incorrect payer withdraw after blocks stored"
+        );
+    }
 }
