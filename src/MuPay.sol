@@ -27,6 +27,7 @@ contract MuPay {
         uint256 numberOfTokens
     );
     error ZeroTokensNotAllowed();
+    error MerchantWithdrawTimeTooShort();
 
     event ChannelCreated(
         address indexed payer,
@@ -89,10 +90,10 @@ contract MuPay {
             revert ZeroTokensNotAllowed();
         }
 
-        require(
-            merchantWithdrawAfterBlocks <= payerWithdrawAfterBlocks,
-            "Merchant should get sufficient time to withdraw before payer is allowed to withdraw."
-        );
+        // Merchant should get sufficient time to withdraw before payer is allowed to withdraw.
+        if (merchantWithdrawAfterBlocks > payerWithdrawAfterBlocks) {
+            revert MerchantWithdrawTimeTooShort();
+        }
 
         channelsMapping[msg.sender][merchant] = Channel({
             trustAnchor: trustAnchor,
