@@ -105,4 +105,46 @@ contract MuPayTest is Test {
             payerWithdrawAfterBlocks
         );
     }
+
+    function testCreateChannelDuplicateCheck() public {
+        // Setup parameters
+        bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
+        uint256 amount = 1e18;
+        uint256 numberOfTokens = 100;
+        uint256 merchantWithdrawAfterBlocks = 1;
+        uint256 payerWithdrawAfterBlocks = 1;
+
+        // Execute the function call
+        vm.prank(payer);
+        muPay.createChannel{value: amount}(
+            merchant,
+            trustAnchor,
+            amount,
+            numberOfTokens,
+            merchantWithdrawAfterBlocks,
+            payerWithdrawAfterBlocks
+        );
+
+        // Expect revert
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                MuPay.ChannelAlreadyExist.selector,
+                payer,
+                merchant,
+                amount,
+                numberOfTokens
+            )
+        );
+
+        // Execute the function call again
+        vm.prank(payer);
+        muPay.createChannel{value: amount}(
+            merchant,
+            trustAnchor,
+            amount,
+            numberOfTokens,
+            merchantWithdrawAfterBlocks,
+            payerWithdrawAfterBlocks
+        );
+    }
 }
