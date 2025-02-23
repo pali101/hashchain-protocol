@@ -20,7 +20,12 @@ contract MuPay {
     error NothingPayable();
     error FailedToSendEther();
     error PayerCannotRedeemChannelYet(uint256 blockNumber);
-    error ChannelAlreadyExist(address payer, address merchant, uint256 amount, uint256 numberOfTokens);
+    error ChannelAlreadyExist(
+        address payer,
+        address merchant,
+        uint256 amount,
+        uint256 numberOfTokens
+    );
 
     event ChannelCreated(
         address indexed payer,
@@ -36,13 +41,17 @@ contract MuPay {
         bytes32 finalHashValue,
         uint256 numberOfTokensUsed
     );
-    event ChannelReclaimed(address indexed payer, address indexed merchant, uint256 blockNumber);
+    event ChannelReclaimed(
+        address indexed payer,
+        address indexed merchant,
+        uint256 blockNumber
+    );
 
-    function verifyHashchain(bytes32 trustAnchor, bytes32 finalHashValue, uint256 numberOfTokensUsed)
-        public
-        pure
-        returns (bool)
-    {
+    function verifyHashchain(
+        bytes32 trustAnchor,
+        bytes32 finalHashValue,
+        uint256 numberOfTokensUsed
+    ) public pure returns (bool) {
         for (uint256 i = 0; i < numberOfTokensUsed; i++) {
             finalHashValue = keccak256(abi.encode(finalHashValue));
         }
@@ -61,7 +70,7 @@ contract MuPay {
             revert IncorrectAmount(msg.value, amount);
         }
 
-        if (channelsMapping[msg.sender][merchant].amount == 0) {
+        if (channelsMapping[msg.sender][merchant].amount != 0) {
             revert ChannelAlreadyExist(
                 msg.sender,
                 merchant,
@@ -70,7 +79,10 @@ contract MuPay {
             );
         }
 
-        require(numberOfTokens > 0, "Number of tokens must be greater than zero");
+        require(
+            numberOfTokens > 0,
+            "Number of tokens must be greater than zero"
+        );
 
         require(
             merchantWithdrawAfterBlocks <= payerWithdrawAfterBlocks,
@@ -85,37 +97,67 @@ contract MuPay {
             payerWithdrawAfterBlocks: payerWithdrawAfterBlocks
         });
 
-        emit ChannelCreated(msg.sender, merchant, amount, numberOfTokens, merchantWithdrawAfterBlocks);
+        emit ChannelCreated(
+            msg.sender,
+            merchant,
+            amount,
+            numberOfTokens,
+            merchantWithdrawAfterBlocks
+        );
     }
 
-    function redeemChannel(address payer, bytes32 finalHashValue, uint256 numberOfTokensUsed) public {
+    function redeemChannel(
+        address payer,
+        bytes32 finalHashValue,
+        uint256 numberOfTokensUsed
+    ) public {
         Channel storage channel = channelsMapping[payer][msg.sender];
         if (channel.amount == 0) {
             revert ChannelDoesNotExistOrWithdrawn();
         }
         if (channel.merchantWithdrawAfterBlocks > block.number) {
-            revert MerchantCannotRedeemChannelYet(channel.merchantWithdrawAfterBlocks);
+            revert MerchantCannotRedeemChannelYet(
+                channel.merchantWithdrawAfterBlocks
+            );
         }
 
-        require(numberOfTokensUsed <= channel.numberOfTokens, "Token count exceeded");
+        require(
+            numberOfTokensUsed <= channel.numberOfTokens,
+            "Token count exceeded"
+        );
 
-        if (verifyHashchain(channel.trustAnchor, finalHashValue, numberOfTokensUsed) == false) {
+        if (
+            verifyHashchain(
+                channel.trustAnchor,
+                finalHashValue,
+                numberOfTokensUsed
+            ) == false
+        ) {
             revert TokenVerificationFailed();
         }
-        uint256 payableAmountMerchant = (channel.amount * numberOfTokensUsed) / channel.numberOfTokens;
+        uint256 payableAmountMerchant = (channel.amount * numberOfTokensUsed) /
+            channel.numberOfTokens;
 
         uint256 payableAmountPayer = channel.amount - payableAmountMerchant;
         if (payableAmountMerchant == 0) {
             revert NothingPayable();
         }
         delete channelsMapping[payer][msg.sender];
-        (bool sentMerchant,) = payable(msg.sender).call{value: payableAmountMerchant}("");
-        (bool sentPayer,) = payable(payer).call{value: payableAmountPayer}("");
+        (bool sentMerchant, ) = payable(msg.sender).call{
+            value: payableAmountMerchant
+        }("");
+        (bool sentPayer, ) = payable(payer).call{value: payableAmountPayer}("");
         if (sentMerchant && sentPayer == false) {
             revert FailedToSendEther();
         }
 
-        emit ChannelRedeemed(payer, msg.sender, payableAmountMerchant, finalHashValue, numberOfTokensUsed);
+        emit ChannelRedeemed(
+            payer,
+            msg.sender,
+            payableAmountMerchant,
+            finalHashValue,
+            numberOfTokensUsed
+        );
     }
 
     function reclaimChannel(address merchant) public {
@@ -126,14 +168,18 @@ contract MuPay {
         if (channel.payerWithdrawAfterBlocks < block.number) {
             uint256 amountToReclaim = channel.amount;
             delete channelsMapping[msg.sender][merchant];
-            (bool sent,) = payable(msg.sender).call{value: amountToReclaim}("");
+            (bool sent, ) = payable(msg.sender).call{value: amountToReclaim}(
+                ""
+            );
             if (sent == false) {
                 revert FailedToSendEther();
             }
 
             emit ChannelReclaimed(msg.sender, merchant, block.number);
         } else {
-            revert PayerCannotRedeemChannelYet(channel.payerWithdrawAfterBlocks);
+            revert PayerCannotRedeemChannelYet(
+                channel.payerWithdrawAfterBlocks
+            );
         }
     }
 
