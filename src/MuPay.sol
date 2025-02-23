@@ -26,6 +26,7 @@ contract MuPay {
         uint256 amount,
         uint256 numberOfTokens
     );
+    error ZeroTokensNotAllowed();
 
     event ChannelCreated(
         address indexed payer,
@@ -79,10 +80,14 @@ contract MuPay {
             );
         }
 
-        require(
-            numberOfTokens > 0,
-            "Number of tokens must be greater than zero"
-        );
+        // require(
+        //     numberOfTokens > 0,
+        //     "Number of tokens must be greater than zero"
+        // );
+
+        if (numberOfTokens == 0) {
+            revert ZeroTokensNotAllowed();
+        }
 
         require(
             merchantWithdrawAfterBlocks <= payerWithdrawAfterBlocks,
