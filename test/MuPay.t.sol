@@ -147,4 +147,27 @@ contract MuPayTest is Test {
             payerWithdrawAfterBlocks
         );
     }
+
+    function testCreateChannelZeroToken() public {
+        // Setup parameters
+        bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
+        uint256 amount = 1e18;
+        // Set number of token as 0
+        uint256 numberOfTokens = 0;
+        uint256 merchantWithdrawAfterBlocks = 1;
+        uint256 payerWithdrawAfterBlocks = 1;
+
+        vm.expectRevert(MuPay.ZeroTokensNotAllowed.selector);
+
+        // Execute the function call
+        vm.prank(payer);
+        muPay.createChannel{value: amount}(
+            merchant,
+            trustAnchor,
+            amount,
+            numberOfTokens,
+            merchantWithdrawAfterBlocks,
+            payerWithdrawAfterBlocks
+        );
+    }
 }
