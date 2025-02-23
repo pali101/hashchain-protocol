@@ -74,4 +74,35 @@ contract MuPayTest is Test {
             "Incorrect payer withdraw after blocks stored"
         );
     }
+
+    function testCreateChannelIncorrectAmount() public {
+        // Setup parameters
+        bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
+        uint256 amount = 1e18;
+        uint256 numberOfTokens = 100;
+        uint256 merchantWithdrawAfterBlocks = 1;
+        uint256 payerWithdrawAfterBlocks = 1;
+
+        uint256 incorrectAmount = 1e10;
+
+        // Expect revert
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                MuPay.IncorrectAmount.selector,
+                incorrectAmount,
+                amount
+            )
+        );
+
+        // Execute the function call
+        vm.prank(payer);
+        muPay.createChannel{value: incorrectAmount}(
+            merchant,
+            trustAnchor,
+            amount,
+            numberOfTokens,
+            merchantWithdrawAfterBlocks,
+            payerWithdrawAfterBlocks
+        );
+    }
 }
