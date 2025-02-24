@@ -22,6 +22,10 @@ contract CreateChannelTest is Test {
         uint256 merchantWithdrawAfterBlocks = 1;
         uint256 payerWithdrawAfterBlocks = 1;
 
+        // Check balances before transaction
+        uint256 payerBalanceBefore = payer.balance;
+        uint256 contractBalanceBefore = address(muPay).balance;
+
         // Expect event emission
         vm.expectEmit(true, true, false, true);
         emit MuPay.ChannelCreated(payer, merchant, amount, numberOfTokens, merchantWithdrawAfterBlocks);
@@ -31,6 +35,14 @@ contract CreateChannelTest is Test {
         muPay.createChannel{value: amount}(
             merchant, trustAnchor, amount, numberOfTokens, merchantWithdrawAfterBlocks, payerWithdrawAfterBlocks
         );
+
+        // Check balances after transaction
+        uint256 payerBalanceAfter = payer.balance;
+        uint256 contractBalanceAfter = address(muPay).balance;
+
+        // Verify balance deductions
+        assertEq(payerBalanceBefore - payerBalanceAfter, amount, "Incorrect amount deducted from payer");
+        assertEq(contractBalanceAfter - contractBalanceBefore, amount, "Incorrect amount added to contract");
 
         // Verify storage updates
         (
