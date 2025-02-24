@@ -72,4 +72,16 @@ contract RedeemChannelTest is Test {
         vm.prank(merchant);
         muPay.redeemChannel(payer, incorrectFinalToken, numberOfTokensUsed);
     }
+
+    function testRedeemWithTokenCountExceeded() public {
+        (,, uint256 storedNumberOfToken,,) = muPay.channelsMapping(payer, merchant);
+        uint256 incorrectNumberOfTokensUsed = storedNumberOfToken + 10;
+        vm.roll(block.number + 10);
+        vm.expectRevert(
+            abi.encodeWithSelector(MuPay.TokenCountExceeded.selector, storedNumberOfToken, incorrectNumberOfTokensUsed)
+        );
+
+        vm.prank(merchant);
+        muPay.redeemChannel(payer, finalToken, incorrectNumberOfTokensUsed);
+    }
 }
