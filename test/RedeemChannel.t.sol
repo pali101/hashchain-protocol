@@ -41,6 +41,10 @@ contract RedeemChannelTest is Test {
         uint256 payableAmountMerchant = (storedAmount * numberOfTokensUsed) / storedNumberOfToken;
         uint256 payableAmountPayer = storedAmount - payableAmountMerchant;
 
+        uint256 payerBalanceBefore = payer.balance;
+        uint256 contractBalanceBefore = address(muPay).balance;
+        uint256 merchantBalanceBefore = merchant.balance;
+
         vm.expectEmit(true, true, false, true);
         emit MuPay.ChannelRedeemed(payer, merchant, payableAmountMerchant, finalToken, numberOfTokensUsed);
 
@@ -49,6 +53,18 @@ contract RedeemChannelTest is Test {
 
         vm.prank(merchant);
         muPay.redeemChannel(payer, finalToken, numberOfTokensUsed);
+
+        // Check balances after transaction
+        uint256 payerBalanceAfter = payer.balance;
+        uint256 contractBalanceAfter = address(muPay).balance;
+        uint256 merchantBalanceAfter = merchant.balance;
+
+        // Verify balance deductions
+        assertEq(payerBalanceAfter - payerBalanceBefore, payableAmountPayer, "Incorrect amount refunded to payer");
+        assertEq(contractBalanceBefore - contractBalanceAfter, amount, "Incorrect amount deducted from contract");
+        assertEq(
+            merchantBalanceAfter - merchantBalanceBefore, payableAmountMerchant, "Incorrect amount added to merchant"
+        );
 
         (, uint256 retrievedAmount,,,) = muPay.channelsMapping(payer, merchant);
         assertEq(retrievedAmount, 0, "Channel should be deleted after redeeming");
