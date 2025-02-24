@@ -4,6 +4,13 @@ pragma solidity 0.8.28;
 import {Test, console} from "forge-std/Test.sol";
 import {MuPay} from "../src/MuPay.sol";
 
+contract MaliciousReceiver {
+    // Rejects any ETH sent to it
+    fallback() external payable {
+        revert("ETH Transfer Failed");
+    }
+}
+
 contract RedeemChannelTest is Test {
     MuPay public muPay;
     address public payer = address(0x1);
@@ -135,5 +142,27 @@ contract RedeemChannelTest is Test {
         assertEq(
             merchantBalanceAfter - merchantBalanceBefore, payableAmountMerchant, "Incorrect amount added to merchant"
         );
+    }
+
+    function testRedeemChannelFailToSendEther() public {
+        MaliciousReceiver maliciousMerchant = new MaliciousReceiver();
+
+        vm.prank(payer);
+        muPay.createChannel{value: amount}(
+            address(maliciousMerchant),
+            trustAnchor,
+            amount,
+            numberOfTokens,
+            merchantWithdrawAfterBlocks,
+            payerWithdrawAfterBlocks
+        );
+
+        vm.roll(block.number + 10);
+
+        vm.expectRevert(MuPay.FailedToSendEther.selector);
+
+        // Malicious merchant tries to redeem
+        vm.prank(address(maliciousMerchant));
+        muPay.redeemChannel(payer, finalToken, numberOfTokensUsed);
     }
 }
