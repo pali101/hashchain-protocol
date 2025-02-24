@@ -9,20 +9,20 @@ contract RedeemChannelTest is Test {
     address public payer = address(0x1);
     address public merchant = address(0x2);
 
+    // Setup parameters
+    bytes32 trustAnchor =
+        0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
+    bytes32 finalToken =
+        0x484f839e58e0b400163856f9b4d2c6254e142d89d8b03f1e33a6717620170f30;
+    uint256 amount = 1e18;
+    uint256 numberOfTokens = 100;
+    uint256 merchantWithdrawAfterBlocks = 10;
+    uint256 payerWithdrawAfterBlocks = 100;
+    uint256 numberOfTokensUsed = 50;
+
     function setUp() external {
         muPay = new MuPay();
         vm.deal(payer, 10 ether);
-    }
-
-    function testRedeemChannelSuccess() public {
-        // Setup parameters
-        bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
-        bytes32 finalToken = 0x484f839e58e0b400163856f9b4d2c6254e142d89d8b03f1e33a6717620170f30;
-        uint256 amount = 1e18;
-        uint256 numberOfTokens = 100;
-        uint256 merchantWithdrawAfterBlocks = 10;
-        uint256 payerWithdrawAfterBlocks = 100;
-        uint256 numberOfTokensUsed = 50;
 
         // Expect event emission
         vm.expectEmit(true, true, false, true);
@@ -34,7 +34,6 @@ contract RedeemChannelTest is Test {
             merchantWithdrawAfterBlocks
         );
 
-        // Execute the function call
         vm.prank(payer);
         muPay.createChannel{value: amount}(
             merchant,
@@ -44,7 +43,9 @@ contract RedeemChannelTest is Test {
             merchantWithdrawAfterBlocks,
             payerWithdrawAfterBlocks
         );
+    }
 
+    function testRedeemChannelSuccess() public {
         // Move forward by 1 block
         vm.roll(block.number + 10);
 
