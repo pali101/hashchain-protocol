@@ -24,23 +24,12 @@ contract CreateChannelTest is Test {
 
         // Expect event emission
         vm.expectEmit(true, true, false, true);
-        emit MuPay.ChannelCreated(
-            payer,
-            merchant,
-            amount,
-            numberOfTokens,
-            merchantWithdrawAfterBlocks
-        );
+        emit MuPay.ChannelCreated(payer, merchant, amount, numberOfTokens, merchantWithdrawAfterBlocks);
 
         // Execute the function call
         vm.prank(payer);
         muPay.createChannel{value: amount}(
-            merchant,
-            trustAnchor,
-            amount,
-            numberOfTokens,
-            merchantWithdrawAfterBlocks,
-            payerWithdrawAfterBlocks
+            merchant, trustAnchor, amount, numberOfTokens, merchantWithdrawAfterBlocks, payerWithdrawAfterBlocks
         );
 
         // Verify storage updates
@@ -52,26 +41,16 @@ contract CreateChannelTest is Test {
             uint256 storedPayerWithdrawAfterBlocks
         ) = muPay.channelsMapping(payer, merchant);
 
-        assertEq(
-            storedTrustAnchor,
-            trustAnchor,
-            "Incorrect trust anchor stored"
-        );
+        assertEq(storedTrustAnchor, trustAnchor, "Incorrect trust anchor stored");
         assertEq(storedAmount, amount, "Incorrect amount stored");
-        assertEq(
-            storedToken,
-            numberOfTokens,
-            "Incorrect number of tokens stored"
-        );
+        assertEq(storedToken, numberOfTokens, "Incorrect number of tokens stored");
         assertEq(
             storedMerchantWithdrawAfterBlocks,
             merchantWithdrawAfterBlocks,
             "Incorrect merchant withdraw after blocks stored"
         );
         assertEq(
-            storedPayerWithdrawAfterBlocks,
-            payerWithdrawAfterBlocks,
-            "Incorrect payer withdraw after blocks stored"
+            storedPayerWithdrawAfterBlocks, payerWithdrawAfterBlocks, "Incorrect payer withdraw after blocks stored"
         );
     }
 
@@ -86,23 +65,12 @@ contract CreateChannelTest is Test {
         uint256 incorrectAmount = 1e10;
 
         // Expect revert
-        vm.expectRevert(
-            abi.encodeWithSelector(
-                MuPay.IncorrectAmount.selector,
-                incorrectAmount,
-                amount
-            )
-        );
+        vm.expectRevert(abi.encodeWithSelector(MuPay.IncorrectAmount.selector, incorrectAmount, amount));
 
         // Execute the function call
         vm.prank(payer);
         muPay.createChannel{value: incorrectAmount}(
-            merchant,
-            trustAnchor,
-            amount,
-            numberOfTokens,
-            merchantWithdrawAfterBlocks,
-            payerWithdrawAfterBlocks
+            merchant, trustAnchor, amount, numberOfTokens, merchantWithdrawAfterBlocks, payerWithdrawAfterBlocks
         );
     }
 
@@ -117,34 +85,18 @@ contract CreateChannelTest is Test {
         // Execute the function call
         vm.prank(payer);
         muPay.createChannel{value: amount}(
-            merchant,
-            trustAnchor,
-            amount,
-            numberOfTokens,
-            merchantWithdrawAfterBlocks,
-            payerWithdrawAfterBlocks
+            merchant, trustAnchor, amount, numberOfTokens, merchantWithdrawAfterBlocks, payerWithdrawAfterBlocks
         );
 
         // Expect revert
         vm.expectRevert(
-            abi.encodeWithSelector(
-                MuPay.ChannelAlreadyExist.selector,
-                payer,
-                merchant,
-                amount,
-                numberOfTokens
-            )
+            abi.encodeWithSelector(MuPay.ChannelAlreadyExist.selector, payer, merchant, amount, numberOfTokens)
         );
 
         // Execute the function call again
         vm.prank(payer);
         muPay.createChannel{value: amount}(
-            merchant,
-            trustAnchor,
-            amount,
-            numberOfTokens,
-            merchantWithdrawAfterBlocks,
-            payerWithdrawAfterBlocks
+            merchant, trustAnchor, amount, numberOfTokens, merchantWithdrawAfterBlocks, payerWithdrawAfterBlocks
         );
     }
 
@@ -162,18 +114,11 @@ contract CreateChannelTest is Test {
         // Execute the function call
         vm.prank(payer);
         muPay.createChannel{value: amount}(
-            merchant,
-            trustAnchor,
-            amount,
-            numberOfTokens,
-            merchantWithdrawAfterBlocks,
-            payerWithdrawAfterBlocks
+            merchant, trustAnchor, amount, numberOfTokens, merchantWithdrawAfterBlocks, payerWithdrawAfterBlocks
         );
     }
 
-    function testCreateChannelFailsIfMerchantWithdrawAfterBlocksExceedsPayerWithdraw()
-        public
-    {
+    function testCreateChannelFailsIfMerchantWithdrawAfterBlocksExceedsPayerWithdraw() public {
         // Setup parameters
         bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
         uint256 amount = 1e18;
@@ -187,12 +132,7 @@ contract CreateChannelTest is Test {
         // Execute the function call
         vm.prank(payer);
         muPay.createChannel{value: amount}(
-            merchant,
-            trustAnchor,
-            amount,
-            numberOfTokens,
-            merchantWithdrawAfterBlocks,
-            payerWithdrawAfterBlocks
+            merchant, trustAnchor, amount, numberOfTokens, merchantWithdrawAfterBlocks, payerWithdrawAfterBlocks
         );
     }
 
@@ -208,32 +148,16 @@ contract CreateChannelTest is Test {
 
         // Test Case 1
         vm.expectEmit(true, true, false, true);
-        emit MuPay.ChannelCreated(
-            payer,
-            merchant,
-            amount,
-            numberOfTokens,
-            merchantWithdrawAfterBlocks1
-        );
+        emit MuPay.ChannelCreated(payer, merchant, amount, numberOfTokens, merchantWithdrawAfterBlocks1);
 
         vm.prank(payer);
         muPay.createChannel{value: amount}(
-            merchant,
-            trustAnchor,
-            amount,
-            numberOfTokens,
-            merchantWithdrawAfterBlocks1,
-            payerWithdrawAfterBlocks1
+            merchant, trustAnchor, amount, numberOfTokens, merchantWithdrawAfterBlocks1, payerWithdrawAfterBlocks1
         );
 
         // Verify storage updates for Test Case 1
-        (
-            ,
-            ,
-            ,
-            uint256 storedMerchantWithdrawAfterBlocks1,
-            uint256 storedPayerWithdrawAfterBlocks1
-        ) = muPay.channelsMapping(payer, merchant);
+        (,,, uint256 storedMerchantWithdrawAfterBlocks1, uint256 storedPayerWithdrawAfterBlocks1) =
+            muPay.channelsMapping(payer, merchant);
 
         assertEq(
             storedMerchantWithdrawAfterBlocks1,
@@ -254,32 +178,16 @@ contract CreateChannelTest is Test {
 
         // Test Case 2
         vm.expectEmit(true, true, false, true);
-        emit MuPay.ChannelCreated(
-            payer,
-            merchant2,
-            amount,
-            numberOfTokens,
-            merchantWithdrawAfterBlocks2
-        );
+        emit MuPay.ChannelCreated(payer, merchant2, amount, numberOfTokens, merchantWithdrawAfterBlocks2);
 
         vm.prank(payer);
         muPay.createChannel{value: amount}(
-            merchant2,
-            trustAnchor,
-            amount,
-            numberOfTokens,
-            merchantWithdrawAfterBlocks2,
-            payerWithdrawAfterBlocks2
+            merchant2, trustAnchor, amount, numberOfTokens, merchantWithdrawAfterBlocks2, payerWithdrawAfterBlocks2
         );
 
         // Verify storage updates for Test Case 2
-        (
-            ,
-            ,
-            ,
-            uint256 storedMerchantWithdrawAfterBlocks2,
-            uint256 storedPayerWithdrawAfterBlocks2
-        ) = muPay.channelsMapping(payer, merchant2);
+        (,,, uint256 storedMerchantWithdrawAfterBlocks2, uint256 storedPayerWithdrawAfterBlocks2) =
+            muPay.channelsMapping(payer, merchant2);
 
         assertEq(
             storedMerchantWithdrawAfterBlocks2,
