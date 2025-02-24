@@ -56,4 +56,13 @@ contract ReclaimChannelTest is Test {
         vm.prank(payer);
         muPay.reclaimChannel(merchant);
     }
+
+    function testReclaimNotExistantChannel() public {
+        address merchant2 = address(0x3);
+
+        vm.expectRevert(MuPay.ChannelDoesNotExistOrWithdrawn.selector);
+
+        vm.prank(payer);
+        muPay.reclaimChannel(merchant2);
+    }
 }
