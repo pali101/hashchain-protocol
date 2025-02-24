@@ -23,6 +23,7 @@ contract MuPay {
     error ChannelAlreadyExist(address payer, address merchant, uint256 amount, uint256 numberOfTokens);
     error ZeroTokensNotAllowed();
     error MerchantWithdrawTimeTooShort();
+    error TokenCountExceeded(uint256 totalAvailable, uint256 used);
 
     event ChannelCreated(
         address indexed payer,
@@ -107,7 +108,10 @@ contract MuPay {
             revert MerchantCannotRedeemChannelYet(channel.merchantWithdrawAfterBlocks);
         }
 
-        require(numberOfTokensUsed <= channel.numberOfTokens, "Token count exceeded");
+        // require(numberOfTokensUsed <= channel.numberOfTokens, "Token count exceeded");
+        if (numberOfTokensUsed > channel.numberOfTokens) {
+            revert TokenCountExceeded(channel.numberOfTokens, numberOfTokensUsed);
+        }
 
         if (verifyHashchain(channel.trustAnchor, finalHashValue, numberOfTokensUsed) == false) {
             revert TokenVerificationFailed();
