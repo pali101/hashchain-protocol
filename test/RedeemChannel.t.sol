@@ -92,6 +92,7 @@ contract RedeemChannelTest is Test {
     function testRedeemWithTokenCountExceeded() public {
         (,, uint256 storedNumberOfToken,,) = muPay.channelsMapping(payer, merchant);
         uint256 incorrectNumberOfTokensUsed = storedNumberOfToken + 10;
+
         vm.roll(block.number + 10);
         vm.expectRevert(
             abi.encodeWithSelector(MuPay.TokenCountExceeded.selector, storedNumberOfToken, incorrectNumberOfTokensUsed)
@@ -99,5 +100,40 @@ contract RedeemChannelTest is Test {
 
         vm.prank(merchant);
         muPay.redeemChannel(payer, finalToken, incorrectNumberOfTokensUsed);
+    }
+
+    function testRedeemPaymentDistribution() public {
+        vm.roll(block.number + 10);
+        (, uint256 storedAmount, uint256 storedNumberOfToken,,) = muPay.channelsMapping(payer, merchant);
+
+        // calculate expected payments
+        uint256 payableAmountMerchant = (storedAmount * numberOfTokensUsed) / storedNumberOfToken;
+        uint256 payableAmountPayer = storedAmount - payableAmountMerchant;
+
+        // Capture balances before the transaction
+        uint256 payerBalanceBefore = payer.balance;
+        uint256 contractBalanceBefore = address(muPay).balance;
+        uint256 merchantBalanceBefore = merchant.balance;
+
+        vm.expectEmit(true, true, false, true);
+        emit MuPay.ChannelRedeemed(payer, merchant, payableAmountMerchant, finalToken, numberOfTokensUsed);
+
+        vm.expectEmit(true, true, false, true);
+        emit MuPay.ChannelRefunded(payer, merchant, payableAmountPayer);
+
+        vm.prank(merchant);
+        muPay.redeemChannel(payer, finalToken, numberOfTokensUsed);
+
+        // Check balances after transaction
+        uint256 payerBalanceAfter = payer.balance;
+        uint256 contractBalanceAfter = address(muPay).balance;
+        uint256 merchantBalanceAfter = merchant.balance;
+
+        // Verify balance deductions
+        assertEq(payerBalanceAfter - payerBalanceBefore, payableAmountPayer, "Incorrect amount refunded to payer");
+        assertEq(contractBalanceBefore - contractBalanceAfter, amount, "Incorrect amount deducted from contract");
+        assertEq(
+            merchantBalanceAfter - merchantBalanceBefore, payableAmountMerchant, "Incorrect amount added to merchant"
+        );
     }
 }
