@@ -92,8 +92,8 @@ contract MuPay {
             trustAnchor: trustAnchor,
             amount: amount,
             numberOfTokens: numberOfTokens,
-            merchantWithdrawAfterBlocks: merchantWithdrawAfterBlocks,
-            payerWithdrawAfterBlocks: payerWithdrawAfterBlocks
+            merchantWithdrawAfterBlocks: block.number + merchantWithdrawAfterBlocks,
+            payerWithdrawAfterBlocks: block.number + payerWithdrawAfterBlocks
         });
 
         emit ChannelCreated(msg.sender, merchant, amount, numberOfTokens, merchantWithdrawAfterBlocks);
