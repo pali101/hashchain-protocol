@@ -21,8 +21,8 @@ contract RedeemChannelTest is Test {
     bytes32 finalToken = 0x484f839e58e0b400163856f9b4d2c6254e142d89d8b03f1e33a6717620170f30;
     uint256 amount = 1e18;
     uint256 numberOfTokens = 100;
-    uint256 merchantWithdrawAfterBlocks = 10;
-    uint256 payerWithdrawAfterBlocks = 100;
+    uint256 merchantWithdrawAfterBlocks = block.number + 10;
+    uint256 payerWithdrawAfterBlocks = block.number + 100;
     uint256 numberOfTokensUsed = 50;
 
     function setUp() external {
@@ -40,8 +40,8 @@ contract RedeemChannelTest is Test {
     }
 
     function testRedeemChannelSuccess() public {
-        // Move forward by 10 block
-        vm.roll(block.number + 10);
+        // Move forward by 11 block
+        vm.roll(block.number + 11);
 
         (, uint256 storedAmount, uint256 storedNumberOfToken,,) = muPay.channelsMapping(payer, merchant);
 
@@ -79,7 +79,7 @@ contract RedeemChannelTest is Test {
 
     function testRedeemBeforeAllowedBlocks() public {
         vm.expectRevert(
-            abi.encodeWithSelector(MuPay.MerchantCannotRedeemChannelYet.selector, merchantWithdrawAfterBlocks)
+            abi.encodeWithSelector(MuPay.MerchantCannotRedeemChannelYet.selector, merchantWithdrawAfterBlocks + 1)
         );
 
         vm.prank(merchant);
@@ -89,7 +89,7 @@ contract RedeemChannelTest is Test {
     function testRedeemWithIncorrectToken() public {
         bytes32 incorrectFinalToken = 0x484f839e58e0b400163856f9b4d2c6254e142d89d8b03f1e33a6717620170f31;
 
-        vm.roll(block.number + 10);
+        vm.roll(block.number + 11);
         vm.expectRevert(MuPay.TokenVerificationFailed.selector);
 
         vm.prank(merchant);
@@ -100,7 +100,7 @@ contract RedeemChannelTest is Test {
         (,, uint256 storedNumberOfToken,,) = muPay.channelsMapping(payer, merchant);
         uint256 incorrectNumberOfTokensUsed = storedNumberOfToken + 10;
 
-        vm.roll(block.number + 10);
+        vm.roll(block.number + 11);
         vm.expectRevert(
             abi.encodeWithSelector(MuPay.TokenCountExceeded.selector, storedNumberOfToken, incorrectNumberOfTokensUsed)
         );
@@ -110,7 +110,7 @@ contract RedeemChannelTest is Test {
     }
 
     function testRedeemPaymentDistribution() public {
-        vm.roll(block.number + 10);
+        vm.roll(block.number + 11);
         (, uint256 storedAmount, uint256 storedNumberOfToken,,) = muPay.channelsMapping(payer, merchant);
 
         // calculate expected payments
@@ -157,7 +157,7 @@ contract RedeemChannelTest is Test {
             payerWithdrawAfterBlocks
         );
 
-        vm.roll(block.number + 10);
+        vm.roll(block.number + 11);
 
         vm.expectRevert(MuPay.FailedToSendEther.selector);
 

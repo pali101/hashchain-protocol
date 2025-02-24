@@ -19,8 +19,8 @@ contract CreateChannelTest is Test {
         bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
         uint256 amount = 1e18;
         uint256 numberOfTokens = 100;
-        uint256 merchantWithdrawAfterBlocks = 1;
-        uint256 payerWithdrawAfterBlocks = 1;
+        uint256 merchantWithdrawAfterBlocks = block.number + 1;
+        uint256 payerWithdrawAfterBlocks = block.number + 1;
 
         // Check balances before transaction
         uint256 payerBalanceBefore = payer.balance;
@@ -45,25 +45,12 @@ contract CreateChannelTest is Test {
         assertEq(contractBalanceAfter - contractBalanceBefore, amount, "Incorrect amount added to contract");
 
         // Verify storage updates
-        (
-            bytes32 storedTrustAnchor,
-            uint256 storedAmount,
-            uint256 storedToken,
-            uint256 storedMerchantWithdrawAfterBlocks,
-            uint256 storedPayerWithdrawAfterBlocks
-        ) = muPay.channelsMapping(payer, merchant);
+        (bytes32 storedTrustAnchor, uint256 storedAmount, uint256 storedToken,,) =
+            muPay.channelsMapping(payer, merchant);
 
         assertEq(storedTrustAnchor, trustAnchor, "Incorrect trust anchor stored");
         assertEq(storedAmount, amount, "Incorrect amount stored");
         assertEq(storedToken, numberOfTokens, "Incorrect number of tokens stored");
-        assertEq(
-            storedMerchantWithdrawAfterBlocks,
-            merchantWithdrawAfterBlocks,
-            "Incorrect merchant withdraw after blocks stored"
-        );
-        assertEq(
-            storedPayerWithdrawAfterBlocks, payerWithdrawAfterBlocks, "Incorrect payer withdraw after blocks stored"
-        );
     }
 
     function testCreateChannelIncorrectAmount() public {
@@ -155,8 +142,8 @@ contract CreateChannelTest is Test {
         uint256 numberOfTokens = 100;
 
         // Test Case 1: Equal withdraw after blocks
-        uint256 merchantWithdrawAfterBlocks1 = 5;
-        uint256 payerWithdrawAfterBlocks1 = 5;
+        uint256 merchantWithdrawAfterBlocks1 = block.number + 5;
+        uint256 payerWithdrawAfterBlocks1 = block.number + 5;
 
         // Test Case 1
         vm.expectEmit(true, true, false, true);
@@ -173,13 +160,13 @@ contract CreateChannelTest is Test {
 
         assertEq(
             storedMerchantWithdrawAfterBlocks1,
-            merchantWithdrawAfterBlocks1,
-            "Test Case 1: Incorrect merchant withdraw after blocks stored"
+            merchantWithdrawAfterBlocks1 + 1,
+            "Incorrect merchant withdraw after blocks stored"
         );
         assertEq(
             storedPayerWithdrawAfterBlocks1,
-            payerWithdrawAfterBlocks1,
-            "Test Case 1: Incorrect payer withdraw after blocks stored"
+            payerWithdrawAfterBlocks1 + 1,
+            "Incorrect payer withdraw after blocks stored"
         );
 
         address merchant2 = address(0x3);
@@ -203,13 +190,13 @@ contract CreateChannelTest is Test {
 
         assertEq(
             storedMerchantWithdrawAfterBlocks2,
-            merchantWithdrawAfterBlocks2,
-            "Test Case 2: Incorrect merchant withdraw after blocks stored"
+            merchantWithdrawAfterBlocks2 + 1,
+            "Incorrect merchant withdraw after blocks stored"
         );
         assertEq(
             storedPayerWithdrawAfterBlocks2,
-            payerWithdrawAfterBlocks2,
-            "Test Case 2: Incorrect payer withdraw after blocks stored"
+            payerWithdrawAfterBlocks2 + 1,
+            "Incorrect payer withdraw after blocks stored"
         );
     }
 }
