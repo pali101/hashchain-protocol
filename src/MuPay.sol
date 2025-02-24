@@ -43,6 +43,11 @@ contract MuPay {
         bytes32 finalHashValue,
         uint256 numberOfTokensUsed
     );
+    event ChannelRefunded(
+        address indexed payer,
+        address indexed merchant,
+        uint256 refundAmount
+    );
     event ChannelReclaimed(
         address indexed payer,
         address indexed merchant,
@@ -164,6 +169,8 @@ contract MuPay {
             finalHashValue,
             numberOfTokensUsed
         );
+
+        emit ChannelRefunded(payer, msg.sender, payableAmountPayer);
     }
 
     function reclaimChannel(address merchant) public {
