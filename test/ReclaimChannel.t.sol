@@ -10,8 +10,7 @@ contract ReclaimChannelTest is Test {
     address public merchant = address(0x2);
 
     // Setup parameters
-    bytes32 trustAnchor =
-        0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
+    bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
     uint256 amount = 1e18;
     uint256 numberOfTokens = 100;
     uint256 merchantWithdrawAfterBlocks = 10;
@@ -24,27 +23,16 @@ contract ReclaimChannelTest is Test {
 
         // Expect event emission
         vm.expectEmit(true, true, false, true);
-        emit MuPay.ChannelCreated(
-            payer,
-            merchant,
-            amount,
-            numberOfTokens,
-            merchantWithdrawAfterBlocks
-        );
+        emit MuPay.ChannelCreated(payer, merchant, amount, numberOfTokens, merchantWithdrawAfterBlocks);
 
         vm.prank(payer);
         muPay.createChannel{value: amount}(
-            merchant,
-            trustAnchor,
-            amount,
-            numberOfTokens,
-            merchantWithdrawAfterBlocks,
-            payerWithdrawAfterBlocks
+            merchant, trustAnchor, amount, numberOfTokens, merchantWithdrawAfterBlocks, payerWithdrawAfterBlocks
         );
     }
 
     function testReclaimChannelSuccess() public {
-        vm.roll(block.number + 100);
+        vm.roll(block.number + 101);
 
         uint256 payerBalanceBefore = payer.balance;
 
@@ -56,10 +44,16 @@ contract ReclaimChannelTest is Test {
 
         uint256 payerBalanceAfter = payer.balance;
 
-        assertEq(
-            payerBalanceAfter - payerBalanceBefore,
-            amount,
-            "Incorrect amount sent to payer"
+        assertEq(payerBalanceAfter - payerBalanceBefore, amount, "Incorrect amount sent to payer");
+    }
+
+    function testReclaimBeforeAllowed() public {
+        (,,,, uint256 storedPayerWithdrawAfterBlocks) = muPay.channelsMapping(payer, merchant);
+
+        vm.expectRevert(
+            abi.encodeWithSelector(MuPay.PayerCannotRedeemChannelYet.selector, storedPayerWithdrawAfterBlocks)
         );
+        vm.prank(payer);
+        muPay.reclaimChannel(merchant);
     }
 }
