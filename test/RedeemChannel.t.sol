@@ -33,7 +33,7 @@ contract RedeemChannelTest is Test {
     }
 
     function testRedeemChannelSuccess() public {
-        // Move forward by 1 block
+        // Move forward by 10 block
         vm.roll(block.number + 10);
 
         (, uint256 storedAmount, uint256 storedNumberOfToken,,) = muPay.channelsMapping(payer, merchant);
@@ -61,5 +61,15 @@ contract RedeemChannelTest is Test {
 
         vm.prank(merchant);
         muPay.redeemChannel(payer, finalToken, numberOfTokensUsed);
+    }
+
+    function testRedeemWithIncorrectToken() public {
+        bytes32 incorrectFinalToken = 0x484f839e58e0b400163856f9b4d2c6254e142d89d8b03f1e33a6717620170f31;
+
+        vm.roll(block.number + 10);
+        vm.expectRevert(MuPay.TokenVerificationFailed.selector);
+
+        vm.prank(merchant);
+        muPay.redeemChannel(payer, incorrectFinalToken, numberOfTokensUsed);
     }
 }
