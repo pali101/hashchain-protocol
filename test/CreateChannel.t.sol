@@ -136,6 +136,32 @@ contract CreateChannelTest is Test {
         );
     }
 
+    function testCreateChannelSucceedsIfPayerWithdrawMeetsGap() public {
+        // Setup parameters
+        bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
+        uint256 amount = 1e18;
+        uint256 numberOfTokens = 100;
+        uint256 merchantWithdrawAfterBlocks = 10;
+        uint256 payerWithdrawAfterBlocks = 11; // Meets the 110% rule
+
+        // Check balances before transaction
+        uint256 payerBalanceBefore = payer.balance;
+        uint256 contractBalanceBefore = address(muPay).balance;
+
+        vm.prank(payer);
+        muPay.createChannel{value: amount}(
+            merchant, trustAnchor, amount, numberOfTokens, merchantWithdrawAfterBlocks, payerWithdrawAfterBlocks
+        );
+
+        // Check balances after transaction
+        uint256 payerBalanceAfter = payer.balance;
+        uint256 contractBalanceAfter = address(muPay).balance;
+
+        // Verify balance deductions
+        assertEq(payerBalanceBefore - payerBalanceAfter, amount, "Incorrect amount deducted from payer");
+        assertEq(contractBalanceAfter - contractBalanceBefore, amount, "Incorrect amount added to contract");
+    }
+
     function testCreateChannelValidWithdrawTimes() public {
         // Setup parameters
         bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
