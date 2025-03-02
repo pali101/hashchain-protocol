@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity 0.8.28;
 
-contract MuPay {
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+
+contract MuPay is ReentrancyGuard {
     struct Channel {
         bytes32 trustAnchor;
         uint256 amount;
@@ -99,7 +101,7 @@ contract MuPay {
         emit ChannelCreated(msg.sender, merchant, amount, numberOfTokens, merchantWithdrawAfterBlocks);
     }
 
-    function redeemChannel(address payer, bytes32 finalHashValue, uint256 numberOfTokensUsed) public {
+    function redeemChannel(address payer, bytes32 finalHashValue, uint256 numberOfTokensUsed) public nonReentrant {
         Channel storage channel = channelsMapping[payer][msg.sender];
         if (channel.amount == 0) {
             revert ChannelDoesNotExistOrWithdrawn();
@@ -134,7 +136,7 @@ contract MuPay {
         emit ChannelRefunded(payer, msg.sender, payableAmountPayer);
     }
 
-    function reclaimChannel(address merchant) public {
+    function reclaimChannel(address merchant) public nonReentrant {
         Channel storage channel = channelsMapping[msg.sender][merchant];
         if (channel.amount == 0) {
             revert ChannelDoesNotExistOrWithdrawn();
