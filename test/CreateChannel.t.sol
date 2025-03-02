@@ -162,6 +162,21 @@ contract CreateChannelTest is Test {
         assertEq(contractBalanceAfter - contractBalanceBefore, amount, "Incorrect amount added to contract");
     }
 
+    function testCreateChannelFailsIfPayerWithdrawJustBelowThreshold() public {
+        // Setup parameters
+        bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
+        uint256 amount = 1e18;
+        uint256 numberOfTokens = 100;
+        uint256 merchantWithdrawAfterBlocks = 10;
+        uint256 payerWithdrawAfterBlocks = 10; // Just below the allowed 11
+
+        vm.expectRevert(MuPay.MerchantWithdrawTimeTooShort.selector);
+        vm.prank(payer);
+        muPay.createChannel{value: amount}(
+            merchant, trustAnchor, amount, numberOfTokens, merchantWithdrawAfterBlocks, payerWithdrawAfterBlocks
+        );
+    }
+
     function testCreateChannelValidWithdrawTimes() public {
         // Setup parameters
         bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
