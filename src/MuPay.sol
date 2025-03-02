@@ -125,7 +125,7 @@ contract MuPay {
         delete channelsMapping[payer][msg.sender];
         (bool sentMerchant,) = payable(msg.sender).call{value: payableAmountMerchant}("");
         (bool sentPayer,) = payable(payer).call{value: payableAmountPayer}("");
-        if (!sentMerchant && !sentPayer == false) {
+        if (!sentMerchant || !sentPayer) {
             revert FailedToSendEther();
         }
 
