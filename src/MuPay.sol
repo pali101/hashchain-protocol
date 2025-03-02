@@ -84,7 +84,7 @@ contract MuPay {
         }
 
         // Merchant should get sufficient time to withdraw before payer is allowed to withdraw.
-        if (merchantWithdrawAfterBlocks > payerWithdrawAfterBlocks) {
+        if ((11 * merchantWithdrawAfterBlocks) / 10 > payerWithdrawAfterBlocks) {
             revert MerchantWithdrawTimeTooShort();
         }
 
