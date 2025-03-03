@@ -8,20 +8,20 @@ contract MuPay is ReentrancyGuard {
         bytes32 trustAnchor;
         uint256 amount;
         uint256 numberOfTokens;
-        uint256 merchantWithdrawAfterBlocks;
-        uint256 payerWithdrawAfterBlocks;
+        uint64 merchantWithdrawAfterBlocks;
+        uint64 payerWithdrawAfterBlocks;
     }
 
     // user -> merchant -> channel
     mapping(address => mapping(address => Channel)) public channelsMapping;
 
     error IncorrectAmount(uint256 sent, uint256 expected);
-    error MerchantCannotRedeemChannelYet(uint256 blockNumber);
+    error MerchantCannotRedeemChannelYet(uint64 blockNumber);
     error ChannelDoesNotExistOrWithdrawn();
     error TokenVerificationFailed();
     error NothingPayable();
     error FailedToSendEther();
-    error PayerCannotRedeemChannelYet(uint256 blockNumber);
+    error PayerCannotRedeemChannelYet(uint64 blockNumber);
     error ChannelAlreadyExist(address payer, address merchant, uint256 amount, uint256 numberOfTokens);
     error ZeroTokensNotAllowed();
     error MerchantWithdrawTimeTooShort();
@@ -32,7 +32,7 @@ contract MuPay is ReentrancyGuard {
         address indexed merchant,
         uint256 amount,
         uint256 numberOfTokens,
-        uint256 merchantWithdrawAfterBlocks
+        uint64 merchantWithdrawAfterBlocks
     );
     event ChannelRedeemed(
         address indexed payer,
@@ -60,8 +60,8 @@ contract MuPay is ReentrancyGuard {
         bytes32 trustAnchor,
         uint256 amount,
         uint256 numberOfTokens,
-        uint256 merchantWithdrawAfterBlocks,
-        uint256 payerWithdrawAfterBlocks
+        uint64 merchantWithdrawAfterBlocks,
+        uint64 payerWithdrawAfterBlocks
     ) public payable {
         if (msg.value != amount) {
             revert IncorrectAmount(msg.value, amount);
@@ -94,8 +94,8 @@ contract MuPay is ReentrancyGuard {
             trustAnchor: trustAnchor,
             amount: amount,
             numberOfTokens: numberOfTokens,
-            merchantWithdrawAfterBlocks: block.number + merchantWithdrawAfterBlocks,
-            payerWithdrawAfterBlocks: block.number + payerWithdrawAfterBlocks
+            merchantWithdrawAfterBlocks: uint64(block.number) + merchantWithdrawAfterBlocks,
+            payerWithdrawAfterBlocks: uint64(block.number) + payerWithdrawAfterBlocks
         });
 
         emit ChannelCreated(msg.sender, merchant, amount, numberOfTokens, merchantWithdrawAfterBlocks);

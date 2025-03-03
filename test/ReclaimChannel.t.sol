@@ -13,8 +13,8 @@ contract ReclaimChannelTest is Test {
     bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
     uint256 amount = 1e18;
     uint256 numberOfTokens = 100;
-    uint256 merchantWithdrawAfterBlocks = 10;
-    uint256 payerWithdrawAfterBlocks = 100;
+    uint64 merchantWithdrawAfterBlocks = 10;
+    uint64 payerWithdrawAfterBlocks = 100;
     uint256 numberOfTokensUsed = 50;
 
     function setUp() external {

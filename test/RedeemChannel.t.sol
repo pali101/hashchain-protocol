@@ -21,8 +21,8 @@ contract RedeemChannelTest is Test {
     bytes32 finalToken = 0x484f839e58e0b400163856f9b4d2c6254e142d89d8b03f1e33a6717620170f30;
     uint256 amount = 1e18;
     uint256 numberOfTokens = 100;
-    uint256 merchantWithdrawAfterBlocks = block.number + 10;
-    uint256 payerWithdrawAfterBlocks = block.number + 100;
+    uint64 merchantWithdrawAfterBlocks = uint64(block.number) + 10;
+    uint64 payerWithdrawAfterBlocks = uint64(block.number) + 100;
     uint256 numberOfTokensUsed = 50;
 
     function setUp() external {

@@ -19,8 +19,8 @@ contract CreateChannelTest is Test {
         bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
         uint256 amount = 1e18;
         uint256 numberOfTokens = 100;
-        uint256 merchantWithdrawAfterBlocks = block.number + 1;
-        uint256 payerWithdrawAfterBlocks = block.number + 1;
+        uint64 merchantWithdrawAfterBlocks = uint64(block.number) + 1;
+        uint64 payerWithdrawAfterBlocks = uint64(block.number) + 1;
 
         // Check balances before transaction
         uint256 payerBalanceBefore = payer.balance;
@@ -58,8 +58,8 @@ contract CreateChannelTest is Test {
         bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
         uint256 amount = 1e18;
         uint256 numberOfTokens = 100;
-        uint256 merchantWithdrawAfterBlocks = 1;
-        uint256 payerWithdrawAfterBlocks = 1;
+        uint64 merchantWithdrawAfterBlocks = 1;
+        uint64 payerWithdrawAfterBlocks = 1;
 
         uint256 incorrectAmount = 1e10;
 
@@ -78,8 +78,8 @@ contract CreateChannelTest is Test {
         bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
         uint256 amount = 1e18;
         uint256 numberOfTokens = 100;
-        uint256 merchantWithdrawAfterBlocks = 1;
-        uint256 payerWithdrawAfterBlocks = 1;
+        uint64 merchantWithdrawAfterBlocks = 1;
+        uint64 payerWithdrawAfterBlocks = 1;
 
         // Execute the function call
         vm.prank(payer);
@@ -105,8 +105,8 @@ contract CreateChannelTest is Test {
         uint256 amount = 1e18;
         // Set number of token as 0
         uint256 numberOfTokens = 0;
-        uint256 merchantWithdrawAfterBlocks = 1;
-        uint256 payerWithdrawAfterBlocks = 1;
+        uint64 merchantWithdrawAfterBlocks = 1;
+        uint64 payerWithdrawAfterBlocks = 1;
 
         vm.expectRevert(MuPay.ZeroTokensNotAllowed.selector);
 
@@ -124,8 +124,8 @@ contract CreateChannelTest is Test {
         uint256 numberOfTokens = 100;
 
         // payerWithdrawAfterBlocks should be at least (11 * 10) / 10 = 11
-        uint256 merchantWithdrawAfterBlocks = 10;
-        uint256 payerWithdrawAfterBlocks = 5; // Invalid: Less than 11 (110% rule)
+        uint64 merchantWithdrawAfterBlocks = 10;
+        uint64 payerWithdrawAfterBlocks = 5; // Invalid: Less than 11 (110% rule)
 
         vm.expectRevert(MuPay.MerchantWithdrawTimeTooShort.selector);
 
@@ -141,8 +141,8 @@ contract CreateChannelTest is Test {
         bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
         uint256 amount = 1e18;
         uint256 numberOfTokens = 100;
-        uint256 merchantWithdrawAfterBlocks = 10;
-        uint256 payerWithdrawAfterBlocks = 11; // Meets the 110% rule
+        uint64 merchantWithdrawAfterBlocks = 10;
+        uint64 payerWithdrawAfterBlocks = 11; // Meets the 110% rule
 
         // Check balances before transaction
         uint256 payerBalanceBefore = payer.balance;
@@ -167,8 +167,8 @@ contract CreateChannelTest is Test {
         bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
         uint256 amount = 1e18;
         uint256 numberOfTokens = 100;
-        uint256 merchantWithdrawAfterBlocks = 10;
-        uint256 payerWithdrawAfterBlocks = 10; // Just below the allowed 11
+        uint64 merchantWithdrawAfterBlocks = 10;
+        uint64 payerWithdrawAfterBlocks = 10; // Just below the allowed 11
 
         vm.expectRevert(MuPay.MerchantWithdrawTimeTooShort.selector);
         vm.prank(payer);
@@ -184,8 +184,8 @@ contract CreateChannelTest is Test {
         uint256 numberOfTokens = 100;
 
         // Test Case 1: Equal withdraw after blocks
-        uint256 merchantWithdrawAfterBlocks1 = block.number + 5;
-        uint256 payerWithdrawAfterBlocks1 = block.number + 5;
+        uint64 merchantWithdrawAfterBlocks1 = uint64(block.number) + 5;
+        uint64 payerWithdrawAfterBlocks1 = uint64(block.number) + 5;
 
         // Test Case 1
         vm.expectEmit(true, true, false, true);
@@ -214,8 +214,8 @@ contract CreateChannelTest is Test {
         address merchant2 = address(0x3);
 
         // Test Case 2: Merchant withdraw after blocks < payer withdraw after blocks
-        uint256 merchantWithdrawAfterBlocks2 = 1;
-        uint256 payerWithdrawAfterBlocks2 = 5;
+        uint64 merchantWithdrawAfterBlocks2 = 1;
+        uint64 payerWithdrawAfterBlocks2 = 5;
 
         // Test Case 2
         vm.expectEmit(true, true, false, true);
