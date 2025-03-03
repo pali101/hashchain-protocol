@@ -36,7 +36,7 @@ contract ReclaimChannelTest is Test {
         uint256 payerBalanceBefore = payer.balance;
 
         vm.expectEmit(true, true, false, true);
-        emit MuPay.ChannelReclaimed(payer, merchant, block.number);
+        emit MuPay.ChannelReclaimed(payer, merchant, uint64(block.number));
 
         vm.prank(payer);
         muPay.reclaimChannel(merchant);
