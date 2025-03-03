@@ -18,7 +18,7 @@ contract CreateChannelTest is Test {
         // Setup parameters
         bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
         uint256 amount = 1e18;
-        uint256 numberOfTokens = 100;
+        uint16 numberOfTokens = 100;
         uint64 merchantWithdrawAfterBlocks = uint64(block.number) + 1;
         uint64 payerWithdrawAfterBlocks = uint64(block.number) + 1;
 
@@ -57,7 +57,7 @@ contract CreateChannelTest is Test {
         // Setup parameters
         bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
         uint256 amount = 1e18;
-        uint256 numberOfTokens = 100;
+        uint16 numberOfTokens = 100;
         uint64 merchantWithdrawAfterBlocks = 1;
         uint64 payerWithdrawAfterBlocks = 1;
 
@@ -77,7 +77,7 @@ contract CreateChannelTest is Test {
         // Setup parameters
         bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
         uint256 amount = 1e18;
-        uint256 numberOfTokens = 100;
+        uint16 numberOfTokens = 100;
         uint64 merchantWithdrawAfterBlocks = 1;
         uint64 payerWithdrawAfterBlocks = 1;
 
@@ -104,7 +104,7 @@ contract CreateChannelTest is Test {
         bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
         uint256 amount = 1e18;
         // Set number of token as 0
-        uint256 numberOfTokens = 0;
+        uint16 numberOfTokens = 0;
         uint64 merchantWithdrawAfterBlocks = 1;
         uint64 payerWithdrawAfterBlocks = 1;
 
@@ -121,7 +121,7 @@ contract CreateChannelTest is Test {
         // Setup parameters
         bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
         uint256 amount = 1e18;
-        uint256 numberOfTokens = 100;
+        uint16 numberOfTokens = 100;
 
         // payerWithdrawAfterBlocks should be at least (11 * 10) / 10 = 11
         uint64 merchantWithdrawAfterBlocks = 10;
@@ -140,7 +140,7 @@ contract CreateChannelTest is Test {
         // Setup parameters
         bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
         uint256 amount = 1e18;
-        uint256 numberOfTokens = 100;
+        uint16 numberOfTokens = 100;
         uint64 merchantWithdrawAfterBlocks = 10;
         uint64 payerWithdrawAfterBlocks = 11; // Meets the 110% rule
 
@@ -166,7 +166,7 @@ contract CreateChannelTest is Test {
         // Setup parameters
         bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
         uint256 amount = 1e18;
-        uint256 numberOfTokens = 100;
+        uint16 numberOfTokens = 100;
         uint64 merchantWithdrawAfterBlocks = 10;
         uint64 payerWithdrawAfterBlocks = 10; // Just below the allowed 11
 
@@ -181,7 +181,7 @@ contract CreateChannelTest is Test {
         // Setup parameters
         bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
         uint256 amount = 1e18;
-        uint256 numberOfTokens = 100;
+        uint16 numberOfTokens = 100;
 
         // Test Case 1: Equal withdraw after blocks
         uint64 merchantWithdrawAfterBlocks1 = uint64(block.number) + 5;

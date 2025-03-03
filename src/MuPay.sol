@@ -7,7 +7,7 @@ contract MuPay is ReentrancyGuard {
     struct Channel {
         bytes32 trustAnchor;
         uint256 amount;
-        uint256 numberOfTokens;
+        uint16 numberOfTokens;
         uint64 merchantWithdrawAfterBlocks;
         uint64 payerWithdrawAfterBlocks;
     }
@@ -22,7 +22,7 @@ contract MuPay is ReentrancyGuard {
     error NothingPayable();
     error FailedToSendEther();
     error PayerCannotRedeemChannelYet(uint64 blockNumber);
-    error ChannelAlreadyExist(address payer, address merchant, uint256 amount, uint256 numberOfTokens);
+    error ChannelAlreadyExist(address payer, address merchant, uint256 amount, uint16 numberOfTokens);
     error ZeroTokensNotAllowed();
     error MerchantWithdrawTimeTooShort();
     error TokenCountExceeded(uint256 totalAvailable, uint256 used);
@@ -31,7 +31,7 @@ contract MuPay is ReentrancyGuard {
         address indexed payer,
         address indexed merchant,
         uint256 amount,
-        uint256 numberOfTokens,
+        uint16 numberOfTokens,
         uint64 merchantWithdrawAfterBlocks
     );
     event ChannelRedeemed(
@@ -39,12 +39,12 @@ contract MuPay is ReentrancyGuard {
         address indexed merchant,
         uint256 amountPaid,
         bytes32 finalHashValue,
-        uint256 numberOfTokensUsed
+        uint16 numberOfTokensUsed
     );
     event ChannelRefunded(address indexed payer, address indexed merchant, uint256 refundAmount);
-    event ChannelReclaimed(address indexed payer, address indexed merchant, uint256 blockNumber);
+    event ChannelReclaimed(address indexed payer, address indexed merchant, uint64 blockNumber);
 
-    function verifyHashchain(bytes32 trustAnchor, bytes32 finalHashValue, uint256 numberOfTokensUsed)
+    function verifyHashchain(bytes32 trustAnchor, bytes32 finalHashValue, uint16 numberOfTokensUsed)
         public
         pure
         returns (bool)
@@ -59,7 +59,7 @@ contract MuPay is ReentrancyGuard {
         address merchant,
         bytes32 trustAnchor,
         uint256 amount,
-        uint256 numberOfTokens,
+        uint16 numberOfTokens,
         uint64 merchantWithdrawAfterBlocks,
         uint64 payerWithdrawAfterBlocks
     ) public payable {
@@ -101,7 +101,7 @@ contract MuPay is ReentrancyGuard {
         emit ChannelCreated(msg.sender, merchant, amount, numberOfTokens, merchantWithdrawAfterBlocks);
     }
 
-    function redeemChannel(address payer, bytes32 finalHashValue, uint256 numberOfTokensUsed) public nonReentrant {
+    function redeemChannel(address payer, bytes32 finalHashValue, uint16 numberOfTokensUsed) public nonReentrant {
         Channel storage channel = channelsMapping[payer][msg.sender];
         if (channel.amount == 0) {
             revert ChannelDoesNotExistOrWithdrawn();
@@ -149,7 +149,7 @@ contract MuPay is ReentrancyGuard {
                 revert FailedToSendEther();
             }
 
-            emit ChannelReclaimed(msg.sender, merchant, block.number);
+            emit ChannelReclaimed(msg.sender, merchant, uint64(block.number));
         } else {
             revert PayerCannotRedeemChannelYet(channel.payerWithdrawAfterBlocks);
         }

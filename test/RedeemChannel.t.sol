@@ -20,10 +20,10 @@ contract RedeemChannelTest is Test {
     bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
     bytes32 finalToken = 0x484f839e58e0b400163856f9b4d2c6254e142d89d8b03f1e33a6717620170f30;
     uint256 amount = 1e18;
-    uint256 numberOfTokens = 100;
+    uint16 numberOfTokens = 100;
     uint64 merchantWithdrawAfterBlocks = uint64(block.number) + 10;
     uint64 payerWithdrawAfterBlocks = uint64(block.number) + 100;
-    uint256 numberOfTokensUsed = 50;
+    uint16 numberOfTokensUsed = 50;
 
     function setUp() external {
         muPay = new MuPay();
@@ -97,8 +97,8 @@ contract RedeemChannelTest is Test {
     }
 
     function testRedeemWithTokenCountExceeded() public {
-        (,, uint256 storedNumberOfToken,,) = muPay.channelsMapping(payer, merchant);
-        uint256 incorrectNumberOfTokensUsed = storedNumberOfToken + 10;
+        (,, uint16 storedNumberOfToken,,) = muPay.channelsMapping(payer, merchant);
+        uint16 incorrectNumberOfTokensUsed = storedNumberOfToken + 10;
 
         vm.roll(block.number + 11);
         vm.expectRevert(
