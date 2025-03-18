@@ -191,7 +191,17 @@ contract MuPay is ReentrancyGuard {
         }
     }
 
-    receive() external payable {}
+    /**
+     * @dev Prevents accidental ETH deposits by reverting any direct ETH transfers.
+     */
+    receive() external payable {
+        revert("MuPay: Direct ETH deposits are not allowed");
+    }
 
-    fallback() external payable {}
+    /**
+     * @dev Fallback function to prevent unintended function calls or ether transfers.
+     */
+    fallback() external payable {
+        revert("MuPay: Invalid function call or ETH transfer");
+    }
 }
