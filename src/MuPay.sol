@@ -3,18 +3,29 @@ pragma solidity 0.8.28;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
+/**
+ * @title MuPay - A Simple Payment Channel
+ * @dev This contract enables a payment channel between a payer and a merchant
+ * using a hashchain-based verification mechanism to track payments.
+ */
 contract MuPay is ReentrancyGuard {
+    /**
+     * @dev Represents a payment channel between a payer and a merchant.
+     */
     struct Channel {
-        bytes32 trustAnchor;
-        uint256 amount;
-        uint16 numberOfTokens;
-        uint64 merchantWithdrawAfterBlocks;
-        uint64 payerWithdrawAfterBlocks;
+        bytes32 trustAnchor; // The initial hash value of the hashchain.
+        uint256 amount; // Total deposit in the payment channel.
+        uint16 numberOfTokens; // Number of tokens in the hashchain.
+        uint64 merchantWithdrawAfterBlocks; // Block number after which the merchant can withdraw.
+        uint64 payerWithdrawAfterBlocks; // Block number after which the payer can reclaim funds.
     }
 
     // user -> merchant -> channel
     mapping(address => mapping(address => Channel)) public channelsMapping;
 
+    /**
+     * @dev Custom errors to reduce contract size and improve clarity.
+     */
     error IncorrectAmount(uint256 sent, uint256 expected);
     error MerchantCannotRedeemChannelYet(uint64 blockNumber);
     error ChannelDoesNotExistOrWithdrawn();
@@ -27,6 +38,9 @@ contract MuPay is ReentrancyGuard {
     error MerchantWithdrawTimeTooShort();
     error TokenCountExceeded(uint256 totalAvailable, uint256 used);
 
+    /**
+     * @dev Events to log key contract actions.
+     */
     event ChannelCreated(
         address indexed payer,
         address indexed merchant,
@@ -44,6 +58,14 @@ contract MuPay is ReentrancyGuard {
     event ChannelRefunded(address indexed payer, address indexed merchant, uint256 refundAmount);
     event ChannelReclaimed(address indexed payer, address indexed merchant, uint64 blockNumber);
 
+    /**
+     * @dev Verifies if the final hash value is valid given a trust anchor and the number of tokens used.
+     * This ensures that payments were made according to the hashchain mechanism.
+     * @param trustAnchor The initial hash value stored in the channel.
+     * @param finalHashValue The hash value submitted for verification.
+     * @param numberOfTokensUsed The number of tokens used in the hashchain.
+     * @return True if the final hash value is valid, otherwise false.
+     */
     function verifyHashchain(bytes32 trustAnchor, bytes32 finalHashValue, uint16 numberOfTokensUsed)
         public
         pure
@@ -55,6 +77,15 @@ contract MuPay is ReentrancyGuard {
         return finalHashValue == trustAnchor;
     }
 
+    /**
+     * @dev Creates a new payment channel between a payer and a merchant.
+     * @param merchant The merchant receiving payments.
+     * @param trustAnchor The starting hash value of the hashchain.
+     * @param amount The total deposit amount for the channel.
+     * @param numberOfTokens The number of tokens in the hashchain.
+     * @param merchantWithdrawAfterBlocks The block number after which the merchant can withdraw.
+     * @param payerWithdrawAfterBlocks The block number after which the payer can reclaim unused funds.
+     */
     function createChannel(
         address merchant,
         bytes32 trustAnchor,
@@ -76,11 +107,6 @@ contract MuPay is ReentrancyGuard {
             );
         }
 
-        // require(
-        //     numberOfTokens > 0,
-        //     "Number of tokens must be greater than zero"
-        // );
-
         if (numberOfTokens == 0) {
             revert ZeroTokensNotAllowed();
         }
@@ -101,6 +127,12 @@ contract MuPay is ReentrancyGuard {
         emit ChannelCreated(msg.sender, merchant, amount, numberOfTokens, merchantWithdrawAfterBlocks);
     }
 
+    /**
+     * @dev Redeems a payment channel by verifying a final hash value.
+     * @param payer The address of the payer.
+     * @param finalHashValue The final hash value after consuming tokens.
+     * @param numberOfTokensUsed The number of tokens used.
+     */
     function redeemChannel(address payer, bytes32 finalHashValue, uint16 numberOfTokensUsed) public nonReentrant {
         Channel storage channel = channelsMapping[payer][msg.sender];
         if (channel.amount == 0) {
@@ -136,6 +168,10 @@ contract MuPay is ReentrancyGuard {
         emit ChannelRefunded(payer, msg.sender, payableAmountPayer);
     }
 
+    /**
+     * @dev Allows the payer to reclaim their deposit after the withdrawal period expires.
+     * @param merchant The address of the merchant.
+     */
     function reclaimChannel(address merchant) public nonReentrant {
         Channel storage channel = channelsMapping[msg.sender][merchant];
         if (channel.amount == 0) {
