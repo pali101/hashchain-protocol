@@ -149,7 +149,7 @@ contract MuPay is ReentrancyGuard {
             revert TokenCountExceeded(channel.numberOfTokens, numberOfTokensUsed);
         }
 
-        if (verifyHashchain(channel.trustAnchor, finalHashValue, numberOfTokensUsed) == false) {
+        if (!verifyHashchain(channel.trustAnchor, finalHashValue, numberOfTokensUsed)) {
             revert TokenVerificationFailed();
         }
         uint256 payableAmountMerchant = (channel.amount * numberOfTokensUsed) / channel.numberOfTokens;
