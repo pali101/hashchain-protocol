@@ -94,6 +94,7 @@ contract MuPay is ReentrancyGuard {
         uint64 merchantWithdrawAfterBlocks,
         uint64 payerWithdrawAfterBlocks
     ) public payable {
+        require(merchant != address(0), "Invalid address");
         if (msg.value != amount) {
             revert IncorrectAmount(msg.value, amount);
         }
@@ -134,6 +135,7 @@ contract MuPay is ReentrancyGuard {
      * @param numberOfTokensUsed The number of tokens used.
      */
     function redeemChannel(address payer, bytes32 finalHashValue, uint16 numberOfTokensUsed) public nonReentrant {
+        require(payer != address(0), "Invalid address");
         Channel storage channel = channelsMapping[payer][msg.sender];
         if (channel.amount == 0) {
             revert ChannelDoesNotExistOrWithdrawn();
@@ -173,6 +175,7 @@ contract MuPay is ReentrancyGuard {
      * @param merchant The address of the merchant.
      */
     function reclaimChannel(address merchant) public nonReentrant {
+        require(merchant != address(0), "Invalid address");
         Channel storage channel = channelsMapping[msg.sender][merchant];
         if (channel.amount == 0) {
             revert ChannelDoesNotExistOrWithdrawn();
