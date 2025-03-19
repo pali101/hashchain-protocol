@@ -184,7 +184,7 @@ contract MuPay is ReentrancyGuard {
             uint256 amountToReclaim = channel.amount;
             delete channelsMapping[msg.sender][merchant];
             (bool sent,) = payable(msg.sender).call{value: amountToReclaim}("");
-            if (sent == false) {
+            if (!sent) {
                 revert FailedToSendEther();
             }
 
