@@ -10,6 +10,7 @@ contract ReclaimChannelTest is Test {
     address public merchant = address(0x2);
 
     // Setup parameters
+    address token = address(0);
     bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
     uint256 amount = 1e18;
     uint16 numberOfTokens = 100;
@@ -22,11 +23,11 @@ contract ReclaimChannelTest is Test {
 
         // Expect event emission
         vm.expectEmit(true, true, false, true);
-        emit MuPay.ChannelCreated(payer, merchant, amount, numberOfTokens, merchantWithdrawAfterBlocks);
+        emit MuPay.ChannelCreated(payer, merchant, token, amount, numberOfTokens, merchantWithdrawAfterBlocks);
 
         vm.prank(payer);
         muPay.createChannel{value: amount}(
-            merchant, trustAnchor, amount, numberOfTokens, merchantWithdrawAfterBlocks, payerWithdrawAfterBlocks
+            merchant, token, trustAnchor, amount, numberOfTokens, merchantWithdrawAfterBlocks, payerWithdrawAfterBlocks
         );
     }
 
@@ -36,10 +37,10 @@ contract ReclaimChannelTest is Test {
         uint256 payerBalanceBefore = payer.balance;
 
         vm.expectEmit(true, true, false, true);
-        emit MuPay.ChannelReclaimed(payer, merchant, uint64(block.number));
+        emit MuPay.ChannelReclaimed(payer, merchant, token, uint64(block.number));
 
         vm.prank(payer);
-        muPay.reclaimChannel(merchant);
+        muPay.reclaimChannel(merchant, token);
 
         uint256 payerBalanceAfter = payer.balance;
 
@@ -47,13 +48,13 @@ contract ReclaimChannelTest is Test {
     }
 
     function testReclaimBeforeAllowed() public {
-        (,,,, uint256 storedPayerWithdrawAfterBlocks) = muPay.channelsMapping(payer, merchant);
+        (,,,,, uint256 storedPayerWithdrawAfterBlocks) = muPay.channelsMapping(payer, merchant, token);
 
         vm.expectRevert(
             abi.encodeWithSelector(MuPay.PayerCannotRedeemChannelYet.selector, storedPayerWithdrawAfterBlocks)
         );
         vm.prank(payer);
-        muPay.reclaimChannel(merchant);
+        muPay.reclaimChannel(merchant, token);
     }
 
     function testReclaimNotExistantChannel() public {
@@ -62,6 +63,6 @@ contract ReclaimChannelTest is Test {
         vm.expectRevert(MuPay.ChannelDoesNotExistOrWithdrawn.selector);
 
         vm.prank(payer);
-        muPay.reclaimChannel(merchant2);
+        muPay.reclaimChannel(merchant2, token);
     }
 }
