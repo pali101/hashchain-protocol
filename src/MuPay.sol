@@ -2,6 +2,8 @@
 pragma solidity 0.8.28;
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title MuPay - A Simple Payment Channel
@@ -9,10 +11,13 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
  * using a hashchain-based verification mechanism to track payments.
  */
 contract MuPay is ReentrancyGuard {
+    using SafeERC20 for IERC20;
     /**
      * @dev Represents a payment channel between a payer and a merchant.
      */
+
     struct Channel {
+        address token; // Token address, address(0) for native currency
         bytes32 trustAnchor; // The initial hash value of the hashchain.
         uint256 amount; // Total deposit in the payment channel.
         uint16 numberOfTokens; // Number of tokens in the hashchain.
@@ -20,8 +25,9 @@ contract MuPay is ReentrancyGuard {
         uint64 payerWithdrawAfterBlocks; // Block number after which the payer can reclaim funds.
     }
 
-    // user -> merchant -> channel
-    mapping(address => mapping(address => Channel)) public channelsMapping;
+    // Updated mapping to include token dimension
+    // user -> merchant -> token -> channel
+    mapping(address => mapping(address => mapping(address => Channel))) public channelsMapping;
 
     /**
      * @dev Custom errors to reduce contract size and improve clarity.
@@ -33,7 +39,7 @@ contract MuPay is ReentrancyGuard {
     error NothingPayable();
     error FailedToSendEther();
     error PayerCannotRedeemChannelYet(uint64 blockNumber);
-    error ChannelAlreadyExist(address payer, address merchant, uint256 amount, uint16 numberOfTokens);
+    error ChannelAlreadyExist(address payer, address merchant, address token, uint256 amount, uint16 numberOfTokens);
     error ZeroTokensNotAllowed();
     error MerchantWithdrawTimeTooShort();
     error TokenCountExceeded(uint256 totalAvailable, uint256 used);
@@ -44,6 +50,7 @@ contract MuPay is ReentrancyGuard {
     event ChannelCreated(
         address indexed payer,
         address indexed merchant,
+        address token,
         uint256 amount,
         uint16 numberOfTokens,
         uint64 merchantWithdrawAfterBlocks
@@ -51,12 +58,13 @@ contract MuPay is ReentrancyGuard {
     event ChannelRedeemed(
         address indexed payer,
         address indexed merchant,
+        address token,
         uint256 amountPaid,
         bytes32 finalHashValue,
         uint16 numberOfTokensUsed
     );
-    event ChannelRefunded(address indexed payer, address indexed merchant, uint256 refundAmount);
-    event ChannelReclaimed(address indexed payer, address indexed merchant, uint64 blockNumber);
+    event ChannelRefunded(address indexed payer, address indexed merchant, address token, uint256 refundAmount);
+    event ChannelReclaimed(address indexed payer, address indexed merchant, address token, uint64 blockNumber);
 
     /**
      * @dev Verifies if the final hash value is valid given a trust anchor and the number of tokens used.
@@ -80,6 +88,7 @@ contract MuPay is ReentrancyGuard {
     /**
      * @dev Creates a new payment channel between a payer and a merchant.
      * @param merchant The merchant receiving payments.
+     * @param token The ERC-20 token address used for payments, or address(0) to use the native currency.
      * @param trustAnchor The starting hash value of the hashchain.
      * @param amount The total deposit amount for the channel.
      * @param numberOfTokens The number of tokens in the hashchain.
@@ -88,6 +97,7 @@ contract MuPay is ReentrancyGuard {
      */
     function createChannel(
         address merchant,
+        address token,
         bytes32 trustAnchor,
         uint256 amount,
         uint16 numberOfTokens,
@@ -95,16 +105,25 @@ contract MuPay is ReentrancyGuard {
         uint64 payerWithdrawAfterBlocks
     ) public payable {
         require(merchant != address(0), "Invalid address");
-        if (msg.value != amount) {
-            revert IncorrectAmount(msg.value, amount);
+
+        if (token == address(0)) {
+            if (msg.value != amount) {
+                revert IncorrectAmount(msg.value, amount);
+            }
+        } else {
+            if (msg.value != 0) {
+                revert IncorrectAmount(msg.value, 0);
+            }
+            IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         }
 
-        if (channelsMapping[msg.sender][merchant].amount != 0) {
+        if (channelsMapping[msg.sender][merchant][token].amount != 0) {
             revert ChannelAlreadyExist(
                 msg.sender,
                 merchant,
-                channelsMapping[msg.sender][merchant].amount,
-                channelsMapping[msg.sender][merchant].numberOfTokens
+                token,
+                channelsMapping[msg.sender][merchant][token].amount,
+                channelsMapping[msg.sender][merchant][token].numberOfTokens
             );
         }
 
@@ -117,7 +136,8 @@ contract MuPay is ReentrancyGuard {
             revert MerchantWithdrawTimeTooShort();
         }
 
-        channelsMapping[msg.sender][merchant] = Channel({
+        channelsMapping[msg.sender][merchant][token] = Channel({
+            token: token,
             trustAnchor: trustAnchor,
             amount: amount,
             numberOfTokens: numberOfTokens,
@@ -125,18 +145,22 @@ contract MuPay is ReentrancyGuard {
             payerWithdrawAfterBlocks: uint64(block.number) + payerWithdrawAfterBlocks
         });
 
-        emit ChannelCreated(msg.sender, merchant, amount, numberOfTokens, merchantWithdrawAfterBlocks);
+        emit ChannelCreated(msg.sender, merchant, token, amount, numberOfTokens, merchantWithdrawAfterBlocks);
     }
 
     /**
      * @dev Redeems a payment channel by verifying a final hash value.
      * @param payer The address of the payer.
+     * @param token The ERC-20 token address used for payments, or address(0) to use the native currency.
      * @param finalHashValue The final hash value after consuming tokens.
      * @param numberOfTokensUsed The number of tokens used.
      */
-    function redeemChannel(address payer, bytes32 finalHashValue, uint16 numberOfTokensUsed) public nonReentrant {
+    function redeemChannel(address payer, address token, bytes32 finalHashValue, uint16 numberOfTokensUsed)
+        public
+        nonReentrant
+    {
         require(payer != address(0), "Invalid address");
-        Channel storage channel = channelsMapping[payer][msg.sender];
+        Channel storage channel = channelsMapping[payer][msg.sender][token];
         if (channel.amount == 0) {
             revert ChannelDoesNotExistOrWithdrawn();
         }
@@ -149,7 +173,7 @@ contract MuPay is ReentrancyGuard {
             revert TokenCountExceeded(channel.numberOfTokens, numberOfTokensUsed);
         }
 
-        if (verifyHashchain(channel.trustAnchor, finalHashValue, numberOfTokensUsed) == false) {
+        if (!verifyHashchain(channel.trustAnchor, finalHashValue, numberOfTokensUsed)) {
             revert TokenVerificationFailed();
         }
         uint256 payableAmountMerchant = (channel.amount * numberOfTokensUsed) / channel.numberOfTokens;
@@ -158,37 +182,50 @@ contract MuPay is ReentrancyGuard {
         if (payableAmountMerchant == 0) {
             revert NothingPayable();
         }
-        delete channelsMapping[payer][msg.sender];
-        (bool sentMerchant,) = payable(msg.sender).call{value: payableAmountMerchant}("");
-        (bool sentPayer,) = payable(payer).call{value: payableAmountPayer}("");
-        if (!sentMerchant || !sentPayer) {
-            revert FailedToSendEther();
+        delete channelsMapping[payer][msg.sender][token];
+
+        if (token == address(0)) {
+            (bool sentMerchant,) = payable(msg.sender).call{value: payableAmountMerchant}("");
+            (bool sentPayer,) = payable(payer).call{value: payableAmountPayer}("");
+            if (!sentMerchant || !sentPayer) {
+                revert FailedToSendEther();
+            }
+        } else {
+            // ERC-20 token transfer
+            IERC20(token).safeTransfer(msg.sender, payableAmountMerchant);
+            IERC20(token).safeTransfer(payer, payableAmountPayer);
         }
 
-        emit ChannelRedeemed(payer, msg.sender, payableAmountMerchant, finalHashValue, numberOfTokensUsed);
+        emit ChannelRedeemed(payer, msg.sender, token, payableAmountMerchant, finalHashValue, numberOfTokensUsed);
 
-        emit ChannelRefunded(payer, msg.sender, payableAmountPayer);
+        emit ChannelRefunded(payer, msg.sender, token, payableAmountPayer);
     }
 
     /**
      * @dev Allows the payer to reclaim their deposit after the withdrawal period expires.
      * @param merchant The address of the merchant.
+     * @param token The ERC-20 token address used for payments, or address(0) to use the native currency.
      */
-    function reclaimChannel(address merchant) public nonReentrant {
+    function reclaimChannel(address merchant, address token) public nonReentrant {
         require(merchant != address(0), "Invalid address");
-        Channel storage channel = channelsMapping[msg.sender][merchant];
+        Channel storage channel = channelsMapping[msg.sender][merchant][token];
         if (channel.amount == 0) {
             revert ChannelDoesNotExistOrWithdrawn();
         }
         if (channel.payerWithdrawAfterBlocks < block.number) {
             uint256 amountToReclaim = channel.amount;
-            delete channelsMapping[msg.sender][merchant];
-            (bool sent,) = payable(msg.sender).call{value: amountToReclaim}("");
-            if (sent == false) {
-                revert FailedToSendEther();
+            delete channelsMapping[msg.sender][merchant][token];
+
+            if (token == address(0)) {
+                (bool sent,) = payable(msg.sender).call{value: amountToReclaim}("");
+                if (!sent) {
+                    revert FailedToSendEther();
+                }
+            } else {
+                IERC20(token).safeTransfer(msg.sender, amountToReclaim);
             }
 
-            emit ChannelReclaimed(msg.sender, merchant, uint64(block.number));
+            emit ChannelReclaimed(msg.sender, merchant, token, uint64(block.number));
         } else {
             revert PayerCannotRedeemChannelYet(channel.payerWithdrawAfterBlocks);
         }

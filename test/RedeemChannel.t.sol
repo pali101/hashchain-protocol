@@ -17,6 +17,7 @@ contract RedeemChannelTest is Test {
     address public merchant = address(0x2);
 
     // Setup parameters
+    address token = address(0);
     bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
     bytes32 finalToken = 0x484f839e58e0b400163856f9b4d2c6254e142d89d8b03f1e33a6717620170f30;
     uint256 amount = 1e18;
@@ -31,11 +32,11 @@ contract RedeemChannelTest is Test {
 
         // Expect event emission
         vm.expectEmit(true, true, false, true);
-        emit MuPay.ChannelCreated(payer, merchant, amount, numberOfTokens, merchantWithdrawAfterBlocks);
+        emit MuPay.ChannelCreated(payer, merchant, token, amount, numberOfTokens, merchantWithdrawAfterBlocks);
 
         vm.prank(payer);
         muPay.createChannel{value: amount}(
-            merchant, trustAnchor, amount, numberOfTokens, merchantWithdrawAfterBlocks, payerWithdrawAfterBlocks
+            merchant, token, trustAnchor, amount, numberOfTokens, merchantWithdrawAfterBlocks, payerWithdrawAfterBlocks
         );
     }
 
@@ -43,7 +44,7 @@ contract RedeemChannelTest is Test {
         // Move forward by 11 block
         vm.roll(block.number + 11);
 
-        (, uint256 storedAmount, uint256 storedNumberOfToken,,) = muPay.channelsMapping(payer, merchant);
+        (,, uint256 storedAmount, uint256 storedNumberOfToken,,) = muPay.channelsMapping(payer, merchant, token);
 
         uint256 payableAmountMerchant = (storedAmount * numberOfTokensUsed) / storedNumberOfToken;
         uint256 payableAmountPayer = storedAmount - payableAmountMerchant;
@@ -53,13 +54,13 @@ contract RedeemChannelTest is Test {
         uint256 merchantBalanceBefore = merchant.balance;
 
         vm.expectEmit(true, true, false, true);
-        emit MuPay.ChannelRedeemed(payer, merchant, payableAmountMerchant, finalToken, numberOfTokensUsed);
+        emit MuPay.ChannelRedeemed(payer, merchant, token, payableAmountMerchant, finalToken, numberOfTokensUsed);
 
         vm.expectEmit(true, true, false, true);
-        emit MuPay.ChannelRefunded(payer, merchant, payableAmountPayer);
+        emit MuPay.ChannelRefunded(payer, merchant, token, payableAmountPayer);
 
         vm.prank(merchant);
-        muPay.redeemChannel(payer, finalToken, numberOfTokensUsed);
+        muPay.redeemChannel(payer, token, finalToken, numberOfTokensUsed);
 
         // Check balances after transaction
         uint256 payerBalanceAfter = payer.balance;
@@ -73,7 +74,7 @@ contract RedeemChannelTest is Test {
             merchantBalanceAfter - merchantBalanceBefore, payableAmountMerchant, "Incorrect amount added to merchant"
         );
 
-        (, uint256 retrievedAmount,,,) = muPay.channelsMapping(payer, merchant);
+        (,, uint256 retrievedAmount,,,) = muPay.channelsMapping(payer, merchant, token);
         assertEq(retrievedAmount, 0, "Channel should be deleted after redeeming");
     }
 
@@ -83,7 +84,7 @@ contract RedeemChannelTest is Test {
         );
 
         vm.prank(merchant);
-        muPay.redeemChannel(payer, finalToken, numberOfTokensUsed);
+        muPay.redeemChannel(payer, token, finalToken, numberOfTokensUsed);
     }
 
     function testRedeemWithIncorrectToken() public {
@@ -93,11 +94,11 @@ contract RedeemChannelTest is Test {
         vm.expectRevert(MuPay.TokenVerificationFailed.selector);
 
         vm.prank(merchant);
-        muPay.redeemChannel(payer, incorrectFinalToken, numberOfTokensUsed);
+        muPay.redeemChannel(payer, token, incorrectFinalToken, numberOfTokensUsed);
     }
 
     function testRedeemWithTokenCountExceeded() public {
-        (,, uint16 storedNumberOfToken,,) = muPay.channelsMapping(payer, merchant);
+        (,,, uint16 storedNumberOfToken,,) = muPay.channelsMapping(payer, merchant, token);
         uint16 incorrectNumberOfTokensUsed = storedNumberOfToken + 10;
 
         vm.roll(block.number + 11);
@@ -106,12 +107,12 @@ contract RedeemChannelTest is Test {
         );
 
         vm.prank(merchant);
-        muPay.redeemChannel(payer, finalToken, incorrectNumberOfTokensUsed);
+        muPay.redeemChannel(payer, token, finalToken, incorrectNumberOfTokensUsed);
     }
 
     function testRedeemPaymentDistribution() public {
         vm.roll(block.number + 11);
-        (, uint256 storedAmount, uint256 storedNumberOfToken,,) = muPay.channelsMapping(payer, merchant);
+        (,, uint256 storedAmount, uint256 storedNumberOfToken,,) = muPay.channelsMapping(payer, merchant, token);
 
         // calculate expected payments
         uint256 payableAmountMerchant = (storedAmount * numberOfTokensUsed) / storedNumberOfToken;
@@ -123,13 +124,13 @@ contract RedeemChannelTest is Test {
         uint256 merchantBalanceBefore = merchant.balance;
 
         vm.expectEmit(true, true, false, true);
-        emit MuPay.ChannelRedeemed(payer, merchant, payableAmountMerchant, finalToken, numberOfTokensUsed);
+        emit MuPay.ChannelRedeemed(payer, merchant, token, payableAmountMerchant, finalToken, numberOfTokensUsed);
 
         vm.expectEmit(true, true, false, true);
-        emit MuPay.ChannelRefunded(payer, merchant, payableAmountPayer);
+        emit MuPay.ChannelRefunded(payer, merchant, token, payableAmountPayer);
 
         vm.prank(merchant);
-        muPay.redeemChannel(payer, finalToken, numberOfTokensUsed);
+        muPay.redeemChannel(payer, token, finalToken, numberOfTokensUsed);
 
         // Check balances after transaction
         uint256 payerBalanceAfter = payer.balance;
@@ -150,6 +151,7 @@ contract RedeemChannelTest is Test {
         vm.prank(payer);
         muPay.createChannel{value: amount}(
             address(maliciousMerchant),
+            token,
             trustAnchor,
             amount,
             numberOfTokens,
@@ -163,6 +165,6 @@ contract RedeemChannelTest is Test {
 
         // Malicious merchant tries to redeem
         vm.prank(address(maliciousMerchant));
-        muPay.redeemChannel(payer, finalToken, numberOfTokensUsed);
+        muPay.redeemChannel(payer, token, finalToken, numberOfTokensUsed);
     }
 }
