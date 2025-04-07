@@ -12,8 +12,7 @@ contract ReclaimChannelTest is Test {
 
     // Setup parameters
     ERC20Mock token;
-    bytes32 trustAnchor =
-        0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
+    bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
     uint256 amount = 1e18;
     uint16 numberOfTokens = 100;
     uint64 merchantWithdrawAfterBlocks = 10;
@@ -30,14 +29,7 @@ contract ReclaimChannelTest is Test {
 
         // Expect event emission
         vm.expectEmit(true, true, false, true);
-        emit MuPay.ChannelCreated(
-            payer,
-            merchant,
-            address(token),
-            amount,
-            numberOfTokens,
-            merchantWithdrawAfterBlocks
-        );
+        emit MuPay.ChannelCreated(payer, merchant, address(token), amount, numberOfTokens, merchantWithdrawAfterBlocks);
 
         vm.prank(payer);
         muPay.createChannel(
@@ -57,34 +49,21 @@ contract ReclaimChannelTest is Test {
         uint256 payerBalanceBefore = token.balanceOf(payer);
 
         vm.expectEmit(true, true, false, true);
-        emit MuPay.ChannelReclaimed(
-            payer,
-            merchant,
-            address(token),
-            uint64(block.number)
-        );
+        emit MuPay.ChannelReclaimed(payer, merchant, address(token), uint64(block.number));
 
         vm.prank(payer);
         muPay.reclaimChannel(merchant, address(token));
 
         uint256 payerBalanceAfter = token.balanceOf(payer);
 
-        assertEq(
-            payerBalanceAfter - payerBalanceBefore,
-            amount,
-            "Incorrect amount sent to payer"
-        );
+        assertEq(payerBalanceAfter - payerBalanceBefore, amount, "Incorrect amount sent to payer");
     }
 
     function testReclaimERC20BeforeAllowed() public {
-        (, , , , , uint256 storedPayerWithdrawAfterBlocks) = muPay
-            .channelsMapping(payer, merchant, address(token));
+        (,,,,, uint256 storedPayerWithdrawAfterBlocks) = muPay.channelsMapping(payer, merchant, address(token));
 
         vm.expectRevert(
-            abi.encodeWithSelector(
-                MuPay.PayerCannotRedeemChannelYet.selector,
-                storedPayerWithdrawAfterBlocks
-            )
+            abi.encodeWithSelector(MuPay.PayerCannotRedeemChannelYet.selector, storedPayerWithdrawAfterBlocks)
         );
         vm.prank(payer);
         muPay.reclaimChannel(merchant, address(token));
