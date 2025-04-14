@@ -43,6 +43,7 @@ contract MuPay is ReentrancyGuard {
     error ZeroTokensNotAllowed();
     error MerchantWithdrawTimeTooShort();
     error TokenCountExceeded(uint256 totalAvailable, uint256 used);
+    error InsufficientAllowance(uint256 required, uint256 actual);
 
     /**
      * @dev Events to log key contract actions.
@@ -113,6 +114,10 @@ contract MuPay is ReentrancyGuard {
         } else {
             if (msg.value != 0) {
                 revert IncorrectAmount(msg.value, 0);
+            }
+            uint256 allowance = IERC20(token).allowance(msg.sender, address(this));
+            if (allowance < amount) {
+                revert InsufficientAllowance(amount, allowance);
             }
             IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         }
