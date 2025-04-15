@@ -5,6 +5,8 @@ import {Test, console} from "forge-std/Test.sol";
 import {MuPay} from "../src/MuPay.sol";
 import {ERC20Mock} from "@openzeppelin/contracts/mocks/token/ERC20Mock.sol";
 
+contract NotERC20 {}
+
 contract CreateChannelERC20Test is Test {
     MuPay public muPay;
     address public payer = address(0x1);
@@ -199,6 +201,34 @@ contract CreateChannelERC20Test is Test {
         muPay.createChannel(
             merchant,
             nonContractAddress,
+            trustAnchor,
+            amount,
+            numberOfTokens,
+            merchantWithdrawAfterBlocks,
+            payerWithdrawAfterBlocks
+        );
+    }
+
+    function testCreateChannelERC20NotERC20() public {
+        // Deploy dummy non-ERC20 contract
+        NotERC20 notERC20 = new NotERC20();
+        address invalidERC20 = address(notERC20);
+
+        // Setup parameters
+        bytes32 trustAnchor = 0x7cacb8c6cc65163d30a6c8ce47c0d284490d228d1d1aa7e9ae3f149f77b32b5d;
+        uint256 amount = 1e18;
+        uint16 numberOfTokens = 100;
+        uint64 merchantWithdrawAfterBlocks = 10;
+        uint64 payerWithdrawAfterBlocks = 20;
+
+        // Expect revert with AddressIsNotERC20
+        vm.expectRevert(abi.encodeWithSelector(MuPay.AddressIsNotERC20.selector, invalidERC20));
+
+        // Execute the function call
+        vm.prank(payer);
+        muPay.createChannel(
+            merchant,
+            invalidERC20,
             trustAnchor,
             amount,
             numberOfTokens,
