@@ -107,17 +107,24 @@ contract MuPay is ReentrancyGuard {
         uint64 merchantWithdrawAfterBlocks,
         uint64 payerWithdrawAfterBlocks
     ) public payable {
+        // Validate merchant address
         require(merchant != address(0), "Invalid address");
 
+        // --- Native Currency Handling ---
         if (token == address(0)) {
+            // Ensure the sent ETH matches the expected deposit amount
             if (msg.value != amount) {
                 revert IncorrectAmount(msg.value, amount);
             }
         } else {
+            // --- ERC-20 Token Handling ---
+
+            // Ensure no ETH was sent for token-based payments
             if (msg.value != 0) {
                 revert IncorrectAmount(msg.value, 0);
             }
-            // Ensure the address is a contract
+
+            // Validate that the token address is a deployed contract
             if (token.code.length == 0) {
                 revert AddressIsNotContract(token);
             }
@@ -128,13 +135,18 @@ contract MuPay is ReentrancyGuard {
             } catch {
                 revert AddressIsNotERC20(token);
             }
+
+            // Check that the contract has been approved to spend the specified token amount
             uint256 allowance = IERC20(token).allowance(msg.sender, address(this));
             if (allowance < amount) {
                 revert InsufficientAllowance(amount, allowance);
             }
+
+            // Transfer tokens from the payer to this contract
             IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         }
 
+        // --- Prevent Duplicate Channel Creation ---
         if (channelsMapping[msg.sender][merchant][token].amount != 0) {
             revert ChannelAlreadyExist(
                 msg.sender,
@@ -145,6 +157,7 @@ contract MuPay is ReentrancyGuard {
             );
         }
 
+        // Channel must contain at least one token in the hashchain
         if (numberOfTokens == 0) {
             revert ZeroTokensNotAllowed();
         }
@@ -154,6 +167,7 @@ contract MuPay is ReentrancyGuard {
             revert MerchantWithdrawTimeTooShort();
         }
 
+        // --- Channel Initialization ---
         channelsMapping[msg.sender][merchant][token] = Channel({
             token: token,
             trustAnchor: trustAnchor,
@@ -163,6 +177,7 @@ contract MuPay is ReentrancyGuard {
             payerWithdrawAfterBlocks: uint64(block.number) + payerWithdrawAfterBlocks
         });
 
+        // Emit an event to notify the channel has been created
         emit ChannelCreated(msg.sender, merchant, token, amount, numberOfTokens, merchantWithdrawAfterBlocks);
     }
 
