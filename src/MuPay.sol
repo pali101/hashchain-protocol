@@ -110,6 +110,16 @@ contract MuPay is ReentrancyGuard {
         // Validate merchant address
         require(merchant != address(0), "Invalid address");
 
+        // Channel must contain at least one token in the hashchain
+        if (numberOfTokens == 0) {
+            revert ZeroTokensNotAllowed();
+        }
+
+        // Merchant should get sufficient time to withdraw before payer is allowed to withdraw.
+        if ((11 * merchantWithdrawAfterBlocks) / 10 > payerWithdrawAfterBlocks) {
+            revert MerchantWithdrawTimeTooShort();
+        }
+
         // --- Native Currency Handling ---
         if (token == address(0)) {
             // Ensure the sent ETH matches the expected deposit amount
@@ -128,6 +138,7 @@ contract MuPay is ReentrancyGuard {
             if (token.code.length == 0) {
                 revert AddressIsNotContract(token);
             }
+
             // Try calling a common ERC20 function to verify interface compliance
             // Using totalSupply() as a lightweight sanity check for ERC20 compatibility
             try IERC20(token).totalSupply() returns (uint256) {
@@ -155,16 +166,6 @@ contract MuPay is ReentrancyGuard {
                 channelsMapping[msg.sender][merchant][token].amount,
                 channelsMapping[msg.sender][merchant][token].numberOfTokens
             );
-        }
-
-        // Channel must contain at least one token in the hashchain
-        if (numberOfTokens == 0) {
-            revert ZeroTokensNotAllowed();
-        }
-
-        // Merchant should get sufficient time to withdraw before payer is allowed to withdraw.
-        if ((11 * merchantWithdrawAfterBlocks) / 10 > payerWithdrawAfterBlocks) {
-            revert MerchantWithdrawTimeTooShort();
         }
 
         // --- Channel Initialization ---
