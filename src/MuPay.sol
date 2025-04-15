@@ -44,6 +44,8 @@ contract MuPay is ReentrancyGuard {
     error MerchantWithdrawTimeTooShort();
     error TokenCountExceeded(uint256 totalAvailable, uint256 used);
     error InsufficientAllowance(uint256 required, uint256 actual);
+    error AddressIsNotContract(address token);
+    error AddressIsNotERC20(address token);
 
     /**
      * @dev Events to log key contract actions.
@@ -90,7 +92,7 @@ contract MuPay is ReentrancyGuard {
      * @dev Creates a new payment channel between a payer and a merchant.
      * @param merchant The merchant receiving payments.
      * @param token The ERC-20 token address used for payments, or address(0) to use the native currency.
-     * @param trustAnchor The starting hash value of the hashchain.
+     * @param trustAnchor The final hash value of the hashchain.
      * @param amount The total deposit amount for the channel.
      * @param numberOfTokens The number of tokens in the hashchain.
      * @param merchantWithdrawAfterBlocks The block number after which the merchant can withdraw.
@@ -114,6 +116,17 @@ contract MuPay is ReentrancyGuard {
         } else {
             if (msg.value != 0) {
                 revert IncorrectAmount(msg.value, 0);
+            }
+            // Ensure the address is a contract
+            if (token.code.length == 0) {
+                revert AddressIsNotContract(token);
+            }
+            // Try calling a common ERC20 function to verify interface compliance
+            // Using totalSupply() as a lightweight sanity check for ERC20 compatibility
+            try IERC20(token).totalSupply() returns (uint256) {
+                // Call succeeded — it's likely an ERC20 token.
+            } catch {
+                revert AddressIsNotERC20(token);
             }
             uint256 allowance = IERC20(token).allowance(msg.sender, address(this));
             if (allowance < amount) {
