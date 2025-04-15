@@ -44,6 +44,8 @@ contract MuPay is ReentrancyGuard {
     error MerchantWithdrawTimeTooShort();
     error TokenCountExceeded(uint256 totalAvailable, uint256 used);
     error InsufficientAllowance(uint256 required, uint256 actual);
+    error AddressIsNotContract(address token);
+    error AddressIsNotERC20(address token);
 
     /**
      * @dev Events to log key contract actions.
@@ -90,7 +92,7 @@ contract MuPay is ReentrancyGuard {
      * @dev Creates a new payment channel between a payer and a merchant.
      * @param merchant The merchant receiving payments.
      * @param token The ERC-20 token address used for payments, or address(0) to use the native currency.
-     * @param trustAnchor The starting hash value of the hashchain.
+     * @param trustAnchor The final hash value of the hashchain.
      * @param amount The total deposit amount for the channel.
      * @param numberOfTokens The number of tokens in the hashchain.
      * @param merchantWithdrawAfterBlocks The block number after which the merchant can withdraw.
@@ -105,23 +107,57 @@ contract MuPay is ReentrancyGuard {
         uint64 merchantWithdrawAfterBlocks,
         uint64 payerWithdrawAfterBlocks
     ) public payable {
+        // Validate merchant address
         require(merchant != address(0), "Invalid address");
 
+        // Channel must contain at least one token in the hashchain
+        if (numberOfTokens == 0) {
+            revert ZeroTokensNotAllowed();
+        }
+
+        // Merchant should get sufficient time to withdraw before payer is allowed to withdraw.
+        if ((11 * merchantWithdrawAfterBlocks) / 10 > payerWithdrawAfterBlocks) {
+            revert MerchantWithdrawTimeTooShort();
+        }
+
+        // --- Native Currency Handling ---
         if (token == address(0)) {
+            // Ensure the sent ETH matches the expected deposit amount
             if (msg.value != amount) {
                 revert IncorrectAmount(msg.value, amount);
             }
         } else {
+            // --- ERC-20 Token Handling ---
+
+            // Ensure no ETH was sent for token-based payments
             if (msg.value != 0) {
                 revert IncorrectAmount(msg.value, 0);
             }
+
+            // Validate that the token address is a deployed contract
+            if (token.code.length == 0) {
+                revert AddressIsNotContract(token);
+            }
+
+            // Try calling a common ERC20 function to verify interface compliance
+            // Using totalSupply() as a lightweight sanity check for ERC20 compatibility
+            try IERC20(token).totalSupply() returns (uint256) {
+                // Call succeeded — it's likely an ERC20 token.
+            } catch {
+                revert AddressIsNotERC20(token);
+            }
+
+            // Check that the contract has been approved to spend the specified token amount
             uint256 allowance = IERC20(token).allowance(msg.sender, address(this));
             if (allowance < amount) {
                 revert InsufficientAllowance(amount, allowance);
             }
+
+            // Transfer tokens from the payer to this contract
             IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         }
 
+        // --- Prevent Duplicate Channel Creation ---
         if (channelsMapping[msg.sender][merchant][token].amount != 0) {
             revert ChannelAlreadyExist(
                 msg.sender,
@@ -132,15 +168,7 @@ contract MuPay is ReentrancyGuard {
             );
         }
 
-        if (numberOfTokens == 0) {
-            revert ZeroTokensNotAllowed();
-        }
-
-        // Merchant should get sufficient time to withdraw before payer is allowed to withdraw.
-        if ((11 * merchantWithdrawAfterBlocks) / 10 > payerWithdrawAfterBlocks) {
-            revert MerchantWithdrawTimeTooShort();
-        }
-
+        // --- Channel Initialization ---
         channelsMapping[msg.sender][merchant][token] = Channel({
             token: token,
             trustAnchor: trustAnchor,
@@ -150,6 +178,7 @@ contract MuPay is ReentrancyGuard {
             payerWithdrawAfterBlocks: uint64(block.number) + payerWithdrawAfterBlocks
         });
 
+        // Emit an event to notify the channel has been created
         emit ChannelCreated(msg.sender, merchant, token, amount, numberOfTokens, merchantWithdrawAfterBlocks);
     }
 
