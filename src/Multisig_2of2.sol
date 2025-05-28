@@ -159,6 +159,14 @@ contract Multisig is ReentrancyGuard {
         emit ChannelCreated(payer, payee, token, amount, channel.expiration, channel.sessionId);
     }
 
+    /**
+     * @dev Redeems a payment channel by verifying a final signature.
+     * @param payer The address of the payer.
+     * @param token The ERC-20 token address used for payments, or address(0) to use the native currency.
+     * @param amount The amount the payee is claiming from the channel.
+     * @param nounce A strictly increasing number to prevent replay of old vouchers.
+     * @param signature The payer’s EIP-191 signature over the channel settlement parameters.
+     */
     function redeemChannel(address payer, address token, uint256 amount, uint256 nounce, bytes calldata signature)
         external
         nonReentrant
