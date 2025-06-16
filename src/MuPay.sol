@@ -107,6 +107,28 @@ contract MuPay is ReentrancyGuard {
         uint64 merchantWithdrawAfterBlocks,
         uint64 payerWithdrawAfterBlocks
     ) public payable {
+        _validateChannelParams(merchant, numberOfTokens, merchantWithdrawAfterBlocks, payerWithdrawAfterBlocks);
+
+        // --- Native Currency Handling ---
+        if (token == address(0)) {
+            _createNativeChannel(amount);
+        } else {
+            // --- ERC-20 Token Handling ---
+            _createERC20Channel(token, amount);
+        }
+
+        _initChannel(msg.sender, merchant, token, trustAnchor, amount, numberOfTokens, merchantWithdrawAfterBlocks, payerWithdrawAfterBlocks);
+
+        // Emit an event to notify the channel has been created
+        emit ChannelCreated(msg.sender, merchant, token, amount, numberOfTokens, merchantWithdrawAfterBlocks);
+    }
+
+    function _validateChannelParams(
+        address merchant,
+        uint16 numberOfTokens,
+        uint64 merchantWithdrawAfterBlocks,
+        uint64 payerWithdrawAfterBlocks
+    ) internal pure {
         // Validate merchant address
         require(merchant != address(0), "Invalid address");
 
@@ -119,57 +141,65 @@ contract MuPay is ReentrancyGuard {
         if ((11 * merchantWithdrawAfterBlocks) / 10 > payerWithdrawAfterBlocks) {
             revert MerchantWithdrawTimeTooShort();
         }
+    }
 
-        // --- Native Currency Handling ---
-        if (token == address(0)) {
-            // Ensure the sent ETH matches the expected deposit amount
-            if (msg.value != amount) {
-                revert IncorrectAmount(msg.value, amount);
-            }
-        } else {
-            // --- ERC-20 Token Handling ---
+    function _createNativeChannel(uint256 amount) internal view {
+        if (msg.value != amount) {
+            revert IncorrectAmount(msg.value, amount);
+        }
+    }
 
-            // Ensure no ETH was sent for token-based payments
-            if (msg.value != 0) {
-                revert IncorrectAmount(msg.value, 0);
-            }
-
-            // Validate that the token address is a deployed contract
-            if (token.code.length == 0) {
-                revert AddressIsNotContract(token);
-            }
-
-            // Try calling a common ERC20 function to verify interface compliance
-            // Using totalSupply() as a lightweight sanity check for ERC20 compatibility
-            try IERC20(token).totalSupply() returns (uint256) {
-                // Call succeeded — it's likely an ERC20 token.
-            } catch {
-                revert AddressIsNotERC20(token);
-            }
-
-            // Check that the contract has been approved to spend the specified token amount
-            uint256 allowance = IERC20(token).allowance(msg.sender, address(this));
-            if (allowance < amount) {
-                revert InsufficientAllowance(amount, allowance);
-            }
-
-            // Transfer tokens from the payer to this contract
-            IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+    function _createERC20Channel(address token, uint256 amount) internal {
+        if (msg.value != 0) {
+            revert IncorrectAmount(msg.value, 0);
         }
 
+        // Validate that the token address is a deployed contract
+        if (token.code.length == 0) {
+            revert AddressIsNotContract(token);
+        }
+
+        // Try calling a common ERC20 function to verify interface compliance
+        // Using totalSupply() as a lightweight sanity check for ERC20 compatibility
+        try IERC20(token).totalSupply() returns (uint256) {
+            // Call succeeded — it's likely an ERC20 token.
+        } catch {
+            revert AddressIsNotERC20(token);
+        }
+
+        // Check that the contract has been approved to spend the specified token amount
+        uint256 allowance = IERC20(token).allowance(msg.sender, address(this));
+        if (allowance < amount) {
+            revert InsufficientAllowance(amount, allowance);
+        }
+
+        // Transfer tokens from the payer to this contract
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+    }
+
+    function _initChannel(
+        address payer,
+        address merchant,
+        address token,
+        bytes32 trustAnchor,
+        uint256 amount,
+        uint16 numberOfTokens,
+        uint64 merchantWithdrawAfterBlocks,
+        uint64 payerWithdrawAfterBlocks
+    ) internal {
         // --- Prevent Duplicate Channel Creation ---
-        if (channelsMapping[msg.sender][merchant][token].amount != 0) {
+        if (channelsMapping[payer][merchant][token].amount != 0) {
             revert ChannelAlreadyExist(
-                msg.sender,
+                payer,
                 merchant,
                 token,
-                channelsMapping[msg.sender][merchant][token].amount,
-                channelsMapping[msg.sender][merchant][token].numberOfTokens
+                channelsMapping[payer][merchant][token].amount,
+                channelsMapping[payer][merchant][token].numberOfTokens
             );
         }
 
         // --- Channel Initialization ---
-        channelsMapping[msg.sender][merchant][token] = Channel({
+        channelsMapping[payer][merchant][token] = Channel({
             token: token,
             trustAnchor: trustAnchor,
             amount: amount,
@@ -177,9 +207,6 @@ contract MuPay is ReentrancyGuard {
             merchantWithdrawAfterBlocks: uint64(block.number) + merchantWithdrawAfterBlocks,
             payerWithdrawAfterBlocks: uint64(block.number) + payerWithdrawAfterBlocks
         });
-
-        // Emit an event to notify the channel has been created
-        emit ChannelCreated(msg.sender, merchant, token, amount, numberOfTokens, merchantWithdrawAfterBlocks);
     }
 
     /**
