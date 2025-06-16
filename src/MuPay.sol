@@ -117,7 +117,16 @@ contract MuPay is ReentrancyGuard {
             _createERC20Channel(token, amount);
         }
 
-        _initChannel(msg.sender, merchant, token, trustAnchor, amount, numberOfTokens, merchantWithdrawAfterBlocks, payerWithdrawAfterBlocks);
+        _initChannel(
+            msg.sender,
+            merchant,
+            token,
+            trustAnchor,
+            amount,
+            numberOfTokens,
+            merchantWithdrawAfterBlocks,
+            payerWithdrawAfterBlocks
+        );
 
         // Emit an event to notify the channel has been created
         emit ChannelCreated(msg.sender, merchant, token, amount, numberOfTokens, merchantWithdrawAfterBlocks);
