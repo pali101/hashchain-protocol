@@ -325,24 +325,24 @@ contract MuPay is ReentrancyGuard {
     function reclaimChannel(address merchant, address token) public nonReentrant {
         require(merchant != address(0), "Invalid address");
         Channel storage channel = channelsMapping[msg.sender][merchant][token];
-        if (channel.amount == 0) {
-            revert ChannelDoesNotExistOrWithdrawn();
-        }
-        if (channel.payerWithdrawAfterBlocks < block.number) {
-            uint256 amountToReclaim = channel.amount;
-            delete channelsMapping[msg.sender][merchant][token];
 
-            if (token == address(0)) {
-                (bool sent,) = payable(msg.sender).call{value: amountToReclaim}("");
-                if (!sent) {
-                    revert FailedToSendEther();
-                }
-            } else {
-                IERC20(token).safeTransfer(msg.sender, amountToReclaim);
-            }
+        _validateReclaimChannel(channel);
 
-            emit ChannelReclaimed(msg.sender, merchant, token, uint64(block.number));
-        } else {
+        uint256 amountToReclaim = channel.amount;
+        delete channelsMapping[msg.sender][merchant][token];
+
+        _transferAmount(token, msg.sender, amountToReclaim);
+
+        emit ChannelReclaimed(msg.sender, merchant, token, uint64(block.number));
+    }
+
+    /**
+     * @dev Validates the reclaim conditions for a payment channel.
+     * @param channel The payment channel data.
+     */
+    function _validateReclaimChannel(Channel memory channel) internal view {
+        if (channel.amount == 0) revert ChannelDoesNotExistOrWithdrawn();
+        if (channel.payerWithdrawAfterBlocks >= block.number) {
             revert PayerCannotRedeemChannelYet(channel.payerWithdrawAfterBlocks);
         }
     }
