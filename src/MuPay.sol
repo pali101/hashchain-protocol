@@ -106,7 +106,7 @@ contract MuPay is ReentrancyGuard {
         uint16 numberOfTokens,
         uint64 merchantWithdrawAfterBlocks,
         uint64 payerWithdrawAfterBlocks
-    ) public payable {
+    ) public payable nonReentrant {
         _validateChannelParams(merchant, numberOfTokens, merchantWithdrawAfterBlocks, payerWithdrawAfterBlocks);
 
         // --- Native Currency Handling ---
@@ -279,7 +279,7 @@ contract MuPay is ReentrancyGuard {
      * @param finalHashValue The final hash value after consuming tokens.
      * @param numberOfTokensUsed The number of tokens used.
      */
-    function _validateRedeemChannel(Channel memory channel, bytes32 finalHashValue, uint16 numberOfTokensUsed)
+    function _validateRedeemChannel(Channel storage channel, bytes32 finalHashValue, uint16 numberOfTokensUsed)
         internal
         view
     {
@@ -340,7 +340,7 @@ contract MuPay is ReentrancyGuard {
      * @dev Validates the reclaim conditions for a payment channel.
      * @param channel The payment channel data.
      */
-    function _validateReclaimChannel(Channel memory channel) internal view {
+    function _validateReclaimChannel(Channel storage channel) internal view {
         if (channel.amount == 0) revert ChannelDoesNotExistOrWithdrawn();
         if (channel.payerWithdrawAfterBlocks >= block.number) {
             revert PayerCannotRedeemChannelYet(channel.payerWithdrawAfterBlocks);
