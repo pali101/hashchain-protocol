@@ -258,6 +258,31 @@ contract MuPay is ReentrancyGuard {
     {
         require(payer != address(0), "Invalid address");
         Channel storage channel = channelsMapping[payer][msg.sender][token];
+        _validateRedeemChannel(channel, finalHashValue, numberOfTokensUsed);
+        uint256 payableAmountMerchant = (channel.amount * numberOfTokensUsed) / channel.numberOfTokens;
+        uint256 payableAmountPayer = channel.amount - payableAmountMerchant;
+
+        if (payableAmountMerchant == 0) revert NothingPayable();
+
+        delete channelsMapping[payer][msg.sender][token];
+
+        _transferAmount(token, msg.sender, payableAmountMerchant);
+        _transferAmount(token, payer, payableAmountPayer);
+
+        emit ChannelRedeemed(payer, msg.sender, token, payableAmountMerchant, finalHashValue, numberOfTokensUsed);
+        emit ChannelRefunded(payer, msg.sender, token, payableAmountPayer);
+    }
+
+    /**
+     * @dev Validates a payment channel and redemption conditions.
+     * @param channel The payment channel data.
+     * @param finalHashValue The final hash value after consuming tokens.
+     * @param numberOfTokensUsed The number of tokens used.
+     */
+    function _validateRedeemChannel(Channel memory channel, bytes32 finalHashValue, uint16 numberOfTokensUsed)
+        internal
+        view
+    {
         if (channel.amount == 0) {
             revert ChannelDoesNotExistOrWithdrawn();
         }
@@ -273,29 +298,23 @@ contract MuPay is ReentrancyGuard {
         if (!verifyHashchain(channel.trustAnchor, finalHashValue, numberOfTokensUsed)) {
             revert TokenVerificationFailed();
         }
-        uint256 payableAmountMerchant = (channel.amount * numberOfTokensUsed) / channel.numberOfTokens;
+    }
 
-        uint256 payableAmountPayer = channel.amount - payableAmountMerchant;
-        if (payableAmountMerchant == 0) {
-            revert NothingPayable();
-        }
-        delete channelsMapping[payer][msg.sender][token];
+    /**
+     * @dev Transfers the specified amount to the recipient in either ERC-20 tokens or native currency.
+     * @param token The ERC-20 token address used for transfer, or address(0) for native currency.
+     * @param recipient The address receiving the funds.
+     * @param amount The amount to be transferred.
+     */
+    function _transferAmount(address token, address recipient, uint256 amount) internal {
+        if (amount == 0) revert NothingPayable();
 
         if (token == address(0)) {
-            (bool sentMerchant,) = payable(msg.sender).call{value: payableAmountMerchant}("");
-            (bool sentPayer,) = payable(payer).call{value: payableAmountPayer}("");
-            if (!sentMerchant || !sentPayer) {
-                revert FailedToSendEther();
-            }
+            (bool sent,) = payable(recipient).call{value: amount}("");
+            if (!sent) revert FailedToSendEther();
         } else {
-            // ERC-20 token transfer
-            IERC20(token).safeTransfer(msg.sender, payableAmountMerchant);
-            IERC20(token).safeTransfer(payer, payableAmountPayer);
+            IERC20(token).safeTransfer(recipient, amount);
         }
-
-        emit ChannelRedeemed(payer, msg.sender, token, payableAmountMerchant, finalHashValue, numberOfTokensUsed);
-
-        emit ChannelRefunded(payer, msg.sender, token, payableAmountPayer);
     }
 
     /**
