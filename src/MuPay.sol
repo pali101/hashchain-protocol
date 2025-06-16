@@ -111,10 +111,10 @@ contract MuPay is ReentrancyGuard {
 
         // --- Native Currency Handling ---
         if (token == address(0)) {
-            _createNativeChannel(amount);
+            _createNativeChannel(amount); // Handles ETH deposit validation
         } else {
             // --- ERC-20 Token Handling ---
-            _createERC20Channel(token, amount);
+            _createERC20Channel(token, amount); // Handles ERC-20 token validation and transfer
         }
 
         _initChannel(
@@ -132,6 +132,13 @@ contract MuPay is ReentrancyGuard {
         emit ChannelCreated(msg.sender, merchant, token, amount, numberOfTokens, merchantWithdrawAfterBlocks);
     }
 
+    /**
+     * @dev Validates the parameters for channel creation.
+     * @param merchant The merchant address, must not be zero.
+     * @param numberOfTokens The number of tokens (steps) in the hashchain, must be > 0.
+     * @param merchantWithdrawAfterBlocks Blocks until merchant can withdraw, must be sufficiently before payer's window.
+     * @param payerWithdrawAfterBlocks Blocks until payer can reclaim, must follow merchant's window with buffer.
+     */
     function _validateChannelParams(
         address merchant,
         uint16 numberOfTokens,
@@ -152,12 +159,21 @@ contract MuPay is ReentrancyGuard {
         }
     }
 
+    /**
+     * @dev Handles native currency channel creation.
+     * @param amount The amount of native currency to be deposited.
+     */
     function _createNativeChannel(uint256 amount) internal view {
         if (msg.value != amount) {
             revert IncorrectAmount(msg.value, amount);
         }
     }
 
+    /**
+     * @dev Handles ERC-20 token channel creation.
+     * @param token The address of the ERC-20 token contract.
+     * @param amount The amount of tokens to be transferred to the contract.
+     */
     function _createERC20Channel(address token, uint256 amount) internal {
         if (msg.value != 0) {
             revert IncorrectAmount(msg.value, 0);
@@ -186,6 +202,17 @@ contract MuPay is ReentrancyGuard {
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
     }
 
+    /**
+     * @dev Initializes the payment channel in storage.
+     * @param payer The address of the user funding the channel.
+     * @param merchant The merchant receiving payments.
+     * @param token The ERC-20 token address used for payments, or address(0) to use the native currency.
+     * @param trustAnchor The final hash value of the hashchain.
+     * @param amount The total deposit amount for the channel.
+     * @param numberOfTokens The number of tokens in the hashchain.
+     * @param merchantWithdrawAfterBlocks The block number after which the merchant can withdraw.
+     * @param payerWithdrawAfterBlocks The block number after which the payer can reclaim unused funds.
+     */
     function _initChannel(
         address payer,
         address merchant,
