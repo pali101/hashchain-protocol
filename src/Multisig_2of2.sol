@@ -19,6 +19,7 @@ contract Multisig is ReentrancyGuard {
         address token; // Token address, address(0) for native currency
         uint256 amount; // Total deposit in the payment channel
         uint64 expiration; // Block timestamp after which the channel expires and payer can reclaim amount
+        uint64 reclaimAfter; // After this time (or block), payer can reclaim funds
         uint64 sessionId; // Unique identifier for the payment session
         uint256 lastNounce; // Last used nonce to prevent replay attacks and ensure order
     }
@@ -42,6 +43,7 @@ contract Multisig is ReentrancyGuard {
     error InsufficientAllowance(uint256 required, uint256 actual);
     error StaleNonce(uint256 supplied, uint256 current);
     error InvalidChannelSignature(address recovered, address expected);
+    error ReclaimAfterMustBeAfterExpiration(uint64 expiration, uint64 reclaimAfter);
 
     /**
      * @dev Events to log key contract actions.
@@ -52,7 +54,8 @@ contract Multisig is ReentrancyGuard {
         address indexed token,
         uint256 amount,
         uint64 expiration,
-        uint256 sessionId
+        uint256 sessionId,
+        uint64 reclaimAfter
     );
     event ChannelRedeemed(
         address indexed payer,
@@ -74,15 +77,24 @@ contract Multisig is ReentrancyGuard {
      * @param amount The total deposit amount for the channel.
      * @param duration The channel lifetime in blocks (from current block).
      */
-    function createChannel(address payee, address token, uint256 amount, uint64 duration) external payable {
+    function createChannel(address payee, address token, uint256 amount, uint64 duration, uint64 reclaimDelay)
+        external
+        payable
+    {
         // Validate payee address
         require(payee != address(0), "Invalid address");
+        require(
+            duration < reclaimDelay,
+            ReclaimAfterMustBeAfterExpiration(
+                uint64(block.timestamp) + duration, uint64(block.timestamp) + reclaimDelay
+            )
+        );
 
         // Dispatch to the correct internal handler based on token type
         if (token == address(0)) {
-            _createNativeChannel(payee, amount, duration);
+            _createNativeChannel(payee, amount, duration, reclaimDelay);
         } else {
-            _createERC20Channel(payee, token, amount, duration);
+            _createERC20Channel(payee, token, amount, duration, reclaimDelay);
         }
     }
 
@@ -92,12 +104,12 @@ contract Multisig is ReentrancyGuard {
      * @param amount The exact ETH amount to lock in the channel.
      * @param duration Lifetime of the channel in blocks.
      */
-    function _createNativeChannel(address payee, uint256 amount, uint64 duration) internal {
+    function _createNativeChannel(address payee, uint256 amount, uint64 duration, uint64 reclaimDelay) internal {
         // Ensure the ETH sent matches the declared deposit
         if (msg.value != amount) revert IncorrectAmount(msg.value, amount);
 
         // Initialize and record the channel
-        _initChannel(msg.sender, payee, address(0), amount, duration);
+        _initChannel(msg.sender, payee, address(0), amount, duration, reclaimDelay);
     }
 
     /**
@@ -107,7 +119,9 @@ contract Multisig is ReentrancyGuard {
      * @param amount The token amount to lock in the channel.
      * @param duration Lifetime of the channel in blocks.
      */
-    function _createERC20Channel(address payee, address token, uint256 amount, uint64 duration) internal {
+    function _createERC20Channel(address payee, address token, uint256 amount, uint64 duration, uint64 reclaimDelay)
+        internal
+    {
         // Ensure no ETH was sent for token-based payments
         if (msg.value != 0) revert IncorrectAmount(msg.value, 0);
 
@@ -130,7 +144,7 @@ contract Multisig is ReentrancyGuard {
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
 
         // Initialize and record the channel
-        _initChannel(msg.sender, payee, token, amount, duration);
+        _initChannel(msg.sender, payee, token, amount, duration, reclaimDelay);
     }
 
     /**
@@ -141,7 +155,14 @@ contract Multisig is ReentrancyGuard {
      * @param amount The locked deposit amount.
      * @param duration Number of blocks until expiration.
      */
-    function _initChannel(address payer, address payee, address token, uint256 amount, uint64 duration) private {
+    function _initChannel(
+        address payer,
+        address payee,
+        address token,
+        uint256 amount,
+        uint64 duration,
+        uint64 reclaimDelay
+    ) private {
         // Channel initialization
         Channel storage channel = channels[payer][payee][token];
 
@@ -152,11 +173,12 @@ contract Multisig is ReentrancyGuard {
 
         channel.token = token;
         channel.amount = amount;
-        channel.expiration = uint64(block.number) + duration;
+        channel.expiration = uint64(block.timestamp) + duration;
+        channel.reclaimAfter = uint64(block.timestamp) + reclaimDelay;
         channel.sessionId += 1;
-        channel.lastNounce = 0;
+        channel.lastNounce += 1;
 
-        emit ChannelCreated(payer, payee, token, amount, channel.expiration, channel.sessionId);
+        emit ChannelCreated(payer, payee, token, amount, channel.expiration, channel.sessionId, channel.reclaimAfter);
     }
 
     /**
@@ -172,7 +194,8 @@ contract Multisig is ReentrancyGuard {
         nonReentrant
     {
         // Validate, mark consumed and compute refund
-        (uint256 refund, uint64 sessionId) = _validateAndConsume(payer, msg.sender, token, amount, nounce, signature);
+        (uint256 refund, uint64 sessionId) =
+            _validateAndConsumeChannel(payer, msg.sender, token, amount, nounce, signature);
 
         // Dispatch the two transfers via _transfer helper function
         _transfer(msg.sender, token, amount);
@@ -183,7 +206,7 @@ contract Multisig is ReentrancyGuard {
         emit ChannelRefunded(payer, msg.sender, token, refund);
     }
 
-    function _validateAndConsume(
+    function _validateAndConsumeChannel(
         address payer,
         address payee,
         address token,
