@@ -106,7 +106,7 @@ contract RedeemChannelTest is Test, BaseTestHelper {
         vm.stopPrank();
     }
 
-    function testsMultisigCannotRedeemWithIncorrectAmountHigher() public {
+    function testMultisigCannotRedeemWithIncorrectAmountHigher() public {
         uint256 contractBalanceBefore = address(multisig).balance;
         uint256 payeeBalanceBefore = PAYEE.balance;
         vm.startPrank(PAYEE);
