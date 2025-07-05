@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.28;
+pragma solidity ^0.8.28;
 
 import {Test, console} from "forge-std/Test.sol";
 import {Multisig} from "../../src/Multisig_2of2.sol";
+import {BaseTestHelper} from "../helper/BaseTestHelper.sol";
 
 contract CreateChannelTest is Test {
     Multisig multisig;
@@ -93,7 +94,7 @@ contract CreateChannelTest is Test {
     }
 
     // Helper function to check channel not created
-    function _assertChannelNotCreated() private {
+    function _assertChannelNotCreated() private view {
         (
             address channelToken,
             uint256 channelAmount,
@@ -103,11 +104,11 @@ contract CreateChannelTest is Test {
             uint256 lastNounce
         ) = multisig.channels(payer, payee, address(0));
 
-        assertEq(channelToken, address(0));
-        assertEq(channelAmount, 0);
-        assertEq(channelExpiration, 0);
-        assertEq(sessionId, 0);
-        assertEq(reclaimAfter, 0);
-        assertEq(lastNounce, 0);
+        assertEq(channelToken, address(0), "default address should be zero address");
+        assertEq(channelAmount, 0, "default amount should be zero");
+        assertEq(channelExpiration, 0, "default expiration should be zero");
+        assertEq(sessionId, 0, "default sessionId should be zero");
+        assertEq(reclaimAfter, 0, "default reclaimAfter should be zero");
+        assertEq(lastNounce, 0, "default lastNounce should be zero");
     }
 }
