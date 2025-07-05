@@ -21,7 +21,7 @@ contract Multisig is ReentrancyGuard {
         uint64 expiration; // Block timestamp after which the channel expires and payer can reclaim amount
         uint64 reclaimAfter; // After this time (or block), payer can reclaim funds
         uint64 sessionId; // Unique identifier for the payment session
-        uint256 lastNounce; // Last used nonce to prevent replay attacks and ensure order
+        uint256 lastNonce; // Last used nonce to prevent replay attacks and ensure order
     }
 
     // payer => payee => token => Channel
@@ -62,7 +62,7 @@ contract Multisig is ReentrancyGuard {
         address indexed payee,
         address indexed token,
         uint256 amount,
-        uint256 nounce,
+        uint256 nonce,
         uint256 sessionId
     );
     event ChannelRefunded(address indexed payer, address indexed payee, address indexed token, uint256 refundAmount);
@@ -177,7 +177,7 @@ contract Multisig is ReentrancyGuard {
         channel.expiration = uint64(block.timestamp) + duration;
         channel.reclaimAfter = uint64(block.timestamp) + reclaimDelay;
         channel.sessionId += 1;
-        channel.lastNounce += 1;
+        channel.lastNonce += 1;
 
         emit ChannelCreated(payer, payee, token, amount, channel.expiration, channel.sessionId, channel.reclaimAfter);
     }
@@ -187,23 +187,23 @@ contract Multisig is ReentrancyGuard {
      * @param payer The address of the payer.
      * @param token The ERC-20 token address used for payments, or address(0) to use the native currency.
      * @param amount The amount the payee is claiming from the channel.
-     * @param nounce A strictly increasing number to prevent replay of old vouchers.
+     * @param nonce A strictly increasing number to prevent replay of old vouchers.
      * @param signature The payer’s EIP-191 signature over the channel settlement parameters.
      */
-    function redeemChannel(address payer, address token, uint256 amount, uint256 nounce, bytes calldata signature)
+    function redeemChannel(address payer, address token, uint256 amount, uint256 nonce, bytes calldata signature)
         external
         nonReentrant
     {
         // Validate, mark consumed and compute refund
         (uint256 refund, uint64 sessionId) =
-            _validateAndConsumeChannel(payer, msg.sender, token, amount, nounce, signature);
+            _validateAndConsumeChannel(payer, msg.sender, token, amount, nonce, signature);
 
         // Dispatch the two transfers via _transfer helper function
         _transfer(msg.sender, token, amount);
         _transfer(payer, token, refund);
 
         // Emit both events
-        emit ChannelRedeemed(payer, msg.sender, token, amount, nounce, sessionId);
+        emit ChannelRedeemed(payer, msg.sender, token, amount, nonce, sessionId);
         emit ChannelRefunded(payer, msg.sender, token, refund);
     }
 
@@ -212,18 +212,18 @@ contract Multisig is ReentrancyGuard {
         address payee,
         address token,
         uint256 amount,
-        uint256 nounce,
+        uint256 nonce,
         bytes calldata signature
     ) internal returns (uint256 refund, uint64 sessionId) {
         Channel storage channel = channels[payer][payee][token];
         if (channel.amount == 0) revert ChannelDoesNotExistOrWithdrawn();
         if (block.timestamp > channel.expiration) revert ChannelExpired(channel.expiration);
         if (amount > channel.amount) revert IncorrectAmount(amount, channel.amount);
-        if (nounce <= channel.lastNounce) revert StaleNonce(nounce, channel.lastNounce);
+        if (nonce <= channel.lastNonce) revert StaleNonce(nonce, channel.lastNonce);
 
         // recreate EIP-191 hash
         bytes32 hash = keccak256(
-            abi.encodePacked(address(this), payer, payee, channel.token, amount, nounce, channel.sessionId)
+            abi.encodePacked(address(this), payer, payee, channel.token, amount, nonce, channel.sessionId)
         ).toEthSignedMessageHash();
 
         // signature check
@@ -234,8 +234,8 @@ contract Multisig is ReentrancyGuard {
         refund = channel.amount - amount;
         sessionId = channel.sessionId;
 
-        // mark nounce used and clear channel
-        channel.lastNounce = nounce;
+        // mark nonce used and clear channel
+        channel.lastNonce = nonce;
         channel.amount = 0;
     }
 

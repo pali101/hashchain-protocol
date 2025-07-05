@@ -75,13 +75,13 @@ contract ReclaimChannelTest is Test, BaseTestHelper {
 
     function _assertChannelStateWhenFailedReclaim(
         uint256 contractBalanceBefore,
-        uint256 payeeBalanceBefore,
+        uint256 payerBalanceBefore,
         uint256 contractBalanceAfter,
-        uint256 payeeBalanceAfter
+        uint256 payerBalanceAfter
     ) internal pure {
         assertEq(
             contractBalanceAfter, contractBalanceBefore, "contract balance should remain unchanged after failed redeem"
         );
-        assertEq(payeeBalanceAfter, payeeBalanceBefore, "payee balance should remain unchanged after failed redeem");
+        assertEq(payerBalanceAfter, payerBalanceBefore, "payer balance should remain unchanged after failed redeem");
     }
 }
