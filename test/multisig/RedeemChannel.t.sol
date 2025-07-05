@@ -96,7 +96,7 @@ contract RedeemChannelTest is Test, BaseTestHelper {
         (,,,, uint64 sessionId, uint256 lastNonce) = multisig.channels(PAYER, PAYEE, NATIVE_TOKEN);
         bytes memory signature =
             getSignature(address(multisig), PAYER1PK, PAYEE, NATIVE_TOKEN, DEPOSIT_AMOUNT, lastNonce + 1, sessionId);
-        (,,uint64 expiration,,,) = multisig.channels(PAYER, PAYEE, NATIVE_TOKEN);
+        (,, uint64 expiration,,,) = multisig.channels(PAYER, PAYEE, NATIVE_TOKEN);
         vm.warp(expiration + 1); // Move time past expiration
 
         vm.startPrank(PAYEE);
@@ -148,8 +148,7 @@ contract RedeemChannelTest is Test, BaseTestHelper {
         uint256 contractBalanceBefore = address(multisig).balance;
         uint256 payeeBalanceBefore = PAYEE.balance;
         vm.startPrank(PAYEE);
-        bytes memory signature =
-            getSignature(address(multisig), PAYER2PK, PAYEE, NATIVE_TOKEN, DEPOSIT_AMOUNT, 1, 1);
+        bytes memory signature = getSignature(address(multisig), PAYER2PK, PAYEE, NATIVE_TOKEN, DEPOSIT_AMOUNT, 1, 1);
 
         // Attempt to redeem a channel that does not exist
         vm.expectRevert(abi.encodeWithSignature("ChannelDoesNotExistOrWithdrawn()"));
@@ -171,7 +170,7 @@ contract RedeemChannelTest is Test, BaseTestHelper {
             getSignature(address(multisig), PAYER1PK, PAYEE, NATIVE_TOKEN, DEPOSIT_AMOUNT, lastNonce + 1, sessionId);
 
         // Attempt to redeem with the wrong payee
-        // Revert with ChannelDoesNotExistOrWithdrawn error 
+        // Revert with ChannelDoesNotExistOrWithdrawn error
         // since channel between PAYEE2 and PAYER does not exist
         vm.expectRevert(abi.encodeWithSignature("ChannelDoesNotExistOrWithdrawn()"));
         multisig.redeemChannel(PAYER, NATIVE_TOKEN, DEPOSIT_AMOUNT, lastNonce + 1, signature);
