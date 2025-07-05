@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+pragma solidity ^0.8.28;
 
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
@@ -80,6 +80,7 @@ contract Multisig is ReentrancyGuard {
     function createChannel(address payee, address token, uint256 amount, uint64 duration, uint64 reclaimDelay)
         external
         payable
+        nonReentrant
     {
         // Validate payee address
         require(payee != address(0), "Invalid address");

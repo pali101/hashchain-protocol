@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BUSL-1.1
-pragma solidity 0.8.28;
+pragma solidity ^0.8.28;
 
 import {Test, console} from "forge-std/Test.sol";
 import {MuPay} from "../src/MuPay.sol";
@@ -33,7 +33,7 @@ contract VerifyHashchainTest is Test {
         assertEq(false, isValid, "Hashchain with wrong trust anchor should be invalid");
     }
 
-    function testInvalidHashchainWrongDepth() public {
+    function testInvalidHashchainWrongDepth() public view {
         bytes32 finalHash = keccak256(abi.encode("seed"));
         uint16 depth = 100;
         bytes32 trustAnchor = finalHash;
