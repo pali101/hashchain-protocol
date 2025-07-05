@@ -33,7 +33,7 @@ contract Multisig is ReentrancyGuard {
     error IncorrectAmount(uint256 sentAmount, uint256 expectedAmount);
     error ChannelDoesNotExistOrWithdrawn();
     error ChannelExpired(uint64 expiration);
-    error PayerCannotRedeemChannelYet(uint256 blockNumber);
+    error PayerCannotRedeemChannelYet(uint256 blockNumber, uint256 reclaimAfter);
     error ChannelAlreadyExist(address payer, address payee, address token, uint256 amount);
     error NothingPayable();
     error FailedToSendEther();
@@ -246,5 +246,34 @@ contract Multisig is ReentrancyGuard {
         } else {
             IERC20(token).safeTransfer(recipient, amount);
         }
+    }
+
+    /**
+     * @dev Allows the payer to reclaim their deposit after the reclaim delay expires.
+     * @param payee The address of the merchant or recipient.
+     * @param token The ERC-20 token address used for payments, or address(0) for native currency.
+     */
+    function reclaimChannel(address payee, address token) external nonReentrant {
+        require(payee != address(0), "Invalid payee address");
+
+        Channel storage channel = channels[msg.sender][payee][token];
+
+        if (channel.amount == 0) {
+            revert ChannelDoesNotExistOrWithdrawn();
+        }
+
+        if (block.timestamp < channel.reclaimAfter) {
+            revert PayerCannotRedeemChannelYet(block.timestamp, channel.reclaimAfter);
+        }
+
+        uint256 amountToReclaim = channel.amount;
+
+        // Clean up storage
+        delete channels[msg.sender][payee][token];
+
+        // Send funds
+        _transfer(msg.sender, token, amountToReclaim);
+
+        emit ChannelReclaimed(msg.sender, payee, token, amountToReclaim);
     }
 }
