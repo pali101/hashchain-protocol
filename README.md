@@ -17,3 +17,55 @@ The process flow of interactions between the client, server, and smart contract 
 <img src="InteractionDiagram.png" alt="Hash Chain-Based Scheme" width="500"/>
 
 This contract ensures secure, efficient, and trustless micro transactions for decentralized applications.
+
+## Local Development & Deployment
+
+### Prerequisites
+
+- [Foundry](https://book.getfoundry.sh/getting-started/installation) (`forge`, `cast`)
+- A valid Ethereum/FEVM keystore file and password
+- RPC endpoint (e.g. Filecoin Calibration, Mainnet, etc.)
+
+### Build and test
+
+```sh
+make build
+```
+
+## Deployment
+
+### Deploy MuPay contract 
+
+```sh
+make deploy-mupay
+```
+
+### Deploy Multisig contract
+
+```sh
+make deploy-multisig
+```
+
+### Deploy both
+
+```sh
+make deploy-all
+```
+
+By default, deployment targets the Filecoin Calibration (calibnet) network (`chain_id: 314159`).  
+You can adjust the `chain_id` or RPC endpoint in the Makefile or deployment script for other networks.
+
+## Environment Setup
+
+Copy `.env.example` to `.env` and fill in your values before deploying:
+```sh
+cp .env.example .env
+```
+
+Then edit `.env` as needed.
+
+You can generate a keystore file from a private key using:
+```sh
+cast wallet import --private-key $PRIVATE_KEY keystoreName
+# File will be saved to ~/.foundry/keystores/
+```
