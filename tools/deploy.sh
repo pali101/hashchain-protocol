@@ -11,8 +11,13 @@
 
 set -euo pipefail
 
-CONTRACT="${1:-both}"
+CONTRACT="${1}"
 CHAIN_ID="${2:-314159}" # Default to calibnet
+
+if [ $# -lt 1 ]; then
+  echo "Usage: $0 <mupay|multisig> [chain_id]"
+  exit 1
+fi
 
 # Load environment variables from .env if present
 if [ -f ".env" ]; then
