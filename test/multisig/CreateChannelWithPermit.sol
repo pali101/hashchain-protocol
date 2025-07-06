@@ -78,7 +78,11 @@ contract CreateChannelERC20PermitTest is Test, BaseTestHelper {
         assertEq(storedToken, address(token), "Stored token address should match");
         assertEq(storedAmount, DEPOSIT_AMOUNT, "Stored amount should match the deposit amount");
         assertEq(storedDuration, DURATION + block.timestamp, "Stored duration should match the specified duration");
-        assertEq(storedReclaimDelay, RECLAIM_DELAY + block.timestamp, "Stored reclaim delay should match the specified reclaim delay");
+        assertEq(
+            storedReclaimDelay,
+            RECLAIM_DELAY + block.timestamp,
+            "Stored reclaim delay should match the specified reclaim delay"
+        );
     }
 
     function testMultisigCreateChannelWithExpiredPermit() public {
