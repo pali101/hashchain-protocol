@@ -4,6 +4,7 @@ pragma solidity ^0.8.28;
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 
 /**
  * @title MuPay - A Simple Payment Channel
@@ -46,6 +47,7 @@ contract MuPay is ReentrancyGuard {
     error InsufficientAllowance(uint256 required, uint256 actual);
     error AddressIsNotContract(address token);
     error AddressIsNotERC20(address token);
+    error DepositWithPermitNotSupportedForNative();
 
     /**
      * @dev Events to log key contract actions.
@@ -119,6 +121,56 @@ contract MuPay is ReentrancyGuard {
 
         _initChannel(
             msg.sender,
+            merchant,
+            token,
+            trustAnchor,
+            amount,
+            numberOfTokens,
+            merchantWithdrawAfterBlocks,
+            payerWithdrawAfterBlocks
+        );
+
+        // Emit an event to notify the channel has been created
+        emit ChannelCreated(msg.sender, merchant, token, amount, numberOfTokens, merchantWithdrawAfterBlocks);
+    }
+
+    /**
+     * @dev Creates a new payment channel using EIP-2612 permit for gasless approval.
+     * @param payer The address of the user funding the channel.
+     * @param merchant The merchant receiving payments.
+     * @param token The ERC-20 token address used for payments.
+     * @param trustAnchor The final hash value of the hashchain.
+     * @param amount The total deposit amount for the channel.
+     * @param numberOfTokens The number of tokens in the hashchain.
+     * @param merchantWithdrawAfterBlocks The block number after which the merchant can withdraw.
+     * @param payerWithdrawAfterBlocks The block number after which the payer can reclaim unused funds.
+     * @param deadline The deadline timestamp for the permit.
+     * @param v, r, s The EIP-2612 signature parameters.
+     */
+    function createChannelWithPermit(
+        address payer,
+        address merchant,
+        address token,
+        bytes32 trustAnchor,
+        uint256 amount,
+        uint16 numberOfTokens,
+        uint64 merchantWithdrawAfterBlocks,
+        uint64 payerWithdrawAfterBlocks,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public nonReentrant {
+        require(token != address(0), DepositWithPermitNotSupportedForNative());
+        require(payer != address(0), "Invalid payer address");
+
+        _validateChannelParams(merchant, numberOfTokens, merchantWithdrawAfterBlocks, payerWithdrawAfterBlocks);
+
+        IERC20Permit(token).permit(payer, address(this), amount, deadline, v, r, s);
+        // Permit was successful, proceed with channel creation
+        _createERC20Channel(token, amount); // Handles ERC-20 token validation and transfer
+        _initChannel(
+            payer,
             merchant,
             token,
             trustAnchor,
