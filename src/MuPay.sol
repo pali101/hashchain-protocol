@@ -182,8 +182,6 @@ contract MuPay is ReentrancyGuard {
 
         // Emit an event to notify the channel has been created
         emit ChannelCreated(msg.sender, merchant, token, amount, numberOfTokens, merchantWithdrawAfterBlocks);
-
-        // revert TokenDoesNotSupportPermit(token);
     }
 
     /**
