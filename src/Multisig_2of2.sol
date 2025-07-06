@@ -124,7 +124,7 @@ contract Multisig is ReentrancyGuard {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external payable nonReentrant {
+    ) public nonReentrant {
         require(payee != address(0), "Invalid address");
         require(
             duration < reclaimDelay,

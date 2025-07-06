@@ -160,7 +160,7 @@ contract MuPay is ReentrancyGuard {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external nonReentrant {
+    ) public nonReentrant {
         require(token != address(0), DepositWithPermitNotSupportedForNative());
         require(payer != address(0), "Invalid payer address");
 
