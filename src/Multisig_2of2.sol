@@ -6,6 +6,7 @@ import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/Messa
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {IERC20} from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 
 contract Multisig is ReentrancyGuard {
     using ECDSA for bytes32; // for recover()
@@ -44,6 +45,7 @@ contract Multisig is ReentrancyGuard {
     error StaleNonce(uint256 supplied, uint256 current);
     error InvalidChannelSignature(address recovered, address expected);
     error ReclaimAfterMustBeAfterExpiration(uint64 expiration, uint64 reclaimAfter);
+    error DepositWithPermitNotSupportedForNative();
 
     /**
      * @dev Events to log key contract actions.
@@ -76,6 +78,7 @@ contract Multisig is ReentrancyGuard {
      * @param token The ERC-20 token address used for payments, or address(0) to use the native currency.
      * @param amount The total deposit amount for the channel.
      * @param duration The channel lifetime in blocks (from current block).
+     * @param reclaimDelay The time after which the payer can reclaim the funds.
      */
     function createChannel(address payee, address token, uint256 amount, uint64 duration, uint64 reclaimDelay)
         external
@@ -97,6 +100,44 @@ contract Multisig is ReentrancyGuard {
         } else {
             _createERC20Channel(payee, token, amount, duration, reclaimDelay);
         }
+    }
+
+    /**
+     * @dev Creates a new payment channel between a payer and a payee.
+     * @param payer The address funding the channel.
+     * @param payee The address receiving payments.
+     * @param token The ERC-20 token address used for payments, or address(0) to use the native currency.
+     * @param duration The channel lifetime in blocks (from current block).
+     * @param reclaimDelay The time after which the payer can reclaim the funds.
+     * @param amount The total deposit amount for the channel.
+     * @param duration The channel lifetime in blocks (from current block).
+     * @param v, r, s The EIP-2612 signature parameters.
+     */
+    function createChannelWithPermit(
+        address payer,
+        address payee,
+        address token,
+        uint256 amount,
+        uint64 duration,
+        uint64 reclaimDelay,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external payable nonReentrant {
+        require(payee != address(0), "Invalid address");
+        require(
+            duration < reclaimDelay,
+            ReclaimAfterMustBeAfterExpiration(
+                uint64(block.timestamp) + duration, uint64(block.timestamp) + reclaimDelay
+            )
+        );
+        // Validate the permit signature
+        require(token != address(0), DepositWithPermitNotSupportedForNative());
+
+        IERC20Permit(token).permit(payer, address(this), amount, deadline, v, r, s);
+
+        _createERC20Channel(payee, token, amount, duration, reclaimDelay);
     }
 
     /**
